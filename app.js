@@ -150,7 +150,7 @@ const SIGNALS = [
  {label:"마크다운 흔적 (**굵게**, ## 제목)", re:/\*\*[^*\n]{1,40}\*\*|^#{1,4}\s/gm, w:2.5, cap:2},
  {label:"줄 머리 이모지 소제목 (🔮 ✨ 💫 등)", re:/^[ \t]*(?:[\u{1F300}-\u{1FAFF}]|[☀-➿])️?[ \t]*\S/gmu, w:1.1, cap:4},
  {label:"글머리표·번호 목록 구조", re:/^[ \t]*(?:[-•·▪]|\d+[.)])[ \t]+/gmu, w:.6, cap:5},
- {label:"긴 대시(—, –) · 폰 타이핑으론 드묾", re:/[—–]/g, w:1.4, cap:2},
+ {label:"긴 대시(—, –)", re:/[—–]/g, w:1.4, cap:2},
  {label:"영문 카드명 병기 (The Star 등)", re:/\bThe (?:Fool|Magician|High Priestess|Empress|Emperor|Hierophant|Lovers|Chariot|Hermit|Wheel of Fortune|Hanged Man|Devil|Tower|Star|Moon|Sun|World)\b|\b(?:Ace|Two|Three|Four|Five|Six|Seven|Eight|Nine|Ten|Page|Knight|Queen|King) of (?:Wands|Cups|Swords|Pentacles)\b/gi, w:1, cap:2},
  {label:"해설서 어미 (상징·의미·나타·암시합니다)", re:/상징(?:합니다|해요|하며|하는)|의미(?:합니다|해요|하며)|나타(?:냅니다|내요|내는 카드)|시사(?:합니다|해요)|암시(?:합니다|해요)/g, w:.7, cap:5},
  {label:"추상어 반복 (에너지·흐름·내면·균형·성장)", re:/에너지|흐름|내면|균형|성장|변화의 시기|새로운 시작|우주의/g, w:.35, cap:8},
@@ -169,11 +169,11 @@ function styleAnalyze(t){
     rows.push({label:s.label, n:m.length+"회", pts, ex:[...new Set(m.map(x=>x.trim()))].slice(0,3).join(" · "), human:!!s.human}); }
   const sents = t.split(/(?<=[.!?。])\s+|\n+/).map(x=>x.trim()).filter(x=>x.length>6);
   if (sents.length >= 6){ const L = sents.map(x=>x.length), mean = L.reduce((a,b)=>a+b,0)/L.length; const cv = Math.sqrt(L.reduce((a,b)=>a+(b-mean)**2,0)/L.length)/mean;
-    if (cv < .38){ raw += 1.4; rows.push({label:"문장 길이가 지나치게 고름", n:"CV "+cv.toFixed(2), pts:1.4, ex:"사람 글은 보통 0.5 이상"}); }
+    if (cv < .38){ raw += 1.4; rows.push({label:"문장 길이의 편차가 작은 편", n:"CV "+cv.toFixed(2), pts:1.4, ex:"본문 문장 길이로 계산한 값이며 작성 방식의 증거는 아니에요."}); }
     else if (cv > .85){ raw -= .8; rows.push({label:"사람 신호 · 문장 길이 들쭉날쭉", n:"CV "+cv.toFixed(2), pts:-.8, ex:"", human:true}); } }
   const mins = parseFloat($("#mins").value); let fast = false;
   if (mins > 0 && t.length > 150){ const cpm = t.length/mins;
-    if (cpm > 250){ fast = true; raw += 2.2; rows.push({label:"답장 속도 대비 글이 너무 김", n:Math.round(cpm)+"자/분", pts:2.2, ex:"폰 타이핑은 보통 분당 100~200자"}); }
+    if (cpm > 250){ fast = true; raw += 2.2; rows.push({label:"입력 시간 대비 본문 글자 수", n:Math.round(cpm)+"자/분", pts:2.2, ex:"입력한 답변 시간과 본문 글자 수로 계산한 값이에요."}); }
     else if (cpm > 130){ raw += 1; rows.push({label:"답장 속도가 빠른 편", n:Math.round(cpm)+"자/분", pts:1, ex:""}); } }
   const q = $("#myq").value.trim(); let lowFit = false;
   if (q){ const ws = (q.match(/[가-힣A-Za-z]{2,}/g)||[]).filter(w=>!/(까요|나요|할까|인가요|있을|어떻게)$/.test(w)); const hit = ws.filter(w=>t.includes(w.slice(0,2)));
