@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>판독기 게시판</title>
+<meta name="description" content="타로 리딩 판독기 이용 후기, 피드백, 제보를 남기는 게시판. 운영자가 확인한 글만 공개돼요.">
+<link rel="stylesheet" href="/fonts/pretendard/pretendard.css">
+<link rel="stylesheet" href="board.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>판독기 게시판</h1>
+      <p class="sub">후기·피드백·제보를 남겨 주세요. 운영자가 확인한 글만 공개돼요.</p>
+    </div>
+    <a class="navlink" href="/">← 판독기로 돌아가기</a>
+  </header>
+
+  <section class="panel" aria-labelledby="rules-h">
+    <h2 id="rules-h">이용 안내</h2>
+    <ul class="plain">
+      <li>공개 화면에는 <b>직접 정한 닉네임만</b> 보여요. 이메일은 글쓴이 확인용으로 운영자만 볼 수 있어요.</li>
+      <li>이메일 인증은 게시판 작성 계정 확인용이에요. <b>실명 확인이 아니에요.</b></li>
+      <li>모든 글과 댓글은 <b>운영자가 확인한 뒤</b> 공개돼요. 욕설·모욕·음란·위협·개인정보·광고는 등록되지 않아요.</li>
+      <li>판독기에 붙여넣은 리딩 본문은 서버로 보내지 않아요. 게시판에는 <b>직접 써서 제출한 내용만</b> 저장돼요.</li>
+      <li>공개된 글에 문제가 있으면 각 글의 <b>신고 · 삭제 요청 · 정정 요청</b> 버튼을 눌러 주세요. 로그인하지 않아도 보낼 수 있어요.</li>
+    </ul>
+    <p class="legal">사실과 다른 내용을 알면서 올리거나 다른 사람의 명예·초상·저작권 등 권리를 침해하면, 작성자에게 민사·형사상 법적 책임이 생길 수 있어요. 특정인을 사기꾼이라고 단정하는 대신 겪은 일을 사실대로 적어 주세요.</p>
+  </section>
+
+  <section class="panel" aria-labelledby="write-h">
+    <h2 id="write-h">글쓰기</h2>
+    <div id="authOff" class="empty" hidden>이메일 인증 기능을 준비 중이라 지금은 글을 쓸 수 없어요. 공개된 글은 아래에서 볼 수 있어요.</div>
+
+    <div id="login" hidden>
+      <p class="note">글을 쓰려면 이메일 인증이 필요해요. 인증 코드는 이 사이트에서만 쓰고, 이메일 주소는 공개되지 않아요.</p>
+      <div class="row">
+        <input type="email" id="email" autocomplete="email" placeholder="이메일 주소" aria-label="이메일 주소">
+        <button id="sendCode">인증 코드 받기</button>
+      </div>
+      <div class="row" id="codeRow" hidden>
+        <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="메일로 받은 6자리 코드" aria-label="인증 코드">
+        <button class="primary" id="verify">확인</button>
+      </div>
+      <p class="msg" id="loginMsg" role="status"></p>
+    </div>
+
+    <div id="nickBox" hidden>
+      <p class="note">공개 화면에 보일 닉네임을 정해 주세요. 2~12자, 한글·영문·숫자·밑줄(_)만 쓸 수 있어요.</p>
+      <div class="row">
+        <input type="text" id="nick" maxlength="12" placeholder="닉네임" aria-label="닉네임">
+        <button class="primary" id="saveNick">닉네임 저장</button>
+      </div>
+      <p class="msg" id="nickMsg" role="status"></p>
+    </div>
+
+    <div id="writer" hidden>
+      <div class="row">
+        <span>작성자: <b id="meNick"></b></span>
+        <span class="note" id="meEmail"></span>
+        <button class="small" id="changeNick">닉네임 바꾸기</button>
+        <button class="small" id="logout">로그아웃</button>
+      </div>
+      <label class="f" for="wType">글 종류
+        <select id="wType">
+          <option value="review">후기 · 써 보니 어땠는지</option>
+          <option value="feedback">피드백 · 고쳤으면 하는 점</option>
+          <option value="report">제보 · 의심되는 수법 공유</option>
+        </select>
+      </label>
+      <label class="f" for="wTitle">제목<input type="text" id="wTitle" maxlength="60"></label>
+      <label class="f" for="wBody">내용 <small>공개돼요. 전화번호·계좌·주소·이메일 같은 개인정보는 쓰지 마세요.</small>
+        <textarea id="wBody" maxlength="3000"></textarea>
+      </label>
+      <label class="f" for="wNote" id="noteWrap" hidden>운영자에게만 전달 (선택) <small>계좌번호·연락처·캡처 설명처럼 공개하면 안 되는 내용은 여기에 적어 주세요. 공개되지 않아요.</small>
+        <textarea id="wNote" class="short" maxlength="1500"></textarea>
+      </label>
+      <label class="check"><input type="checkbox" id="wAgree"> <span>사실대로 썼고, 다른 사람의 개인정보나 권리를 침해하는 내용이 없어요. 고의로 허위 사실을 올리면 법적 책임이 생길 수 있다는 안내를 확인했어요.</span></label>
+      <div class="row"><button class="primary" id="submit">제출하기</button></div>
+      <p class="msg" id="writeMsg" role="status"></p>
+      <details class="more" id="mineBox">
+        <summary>내가 쓴 글 · 검토 상태</summary>
+        <div id="mine"><p class="note">불러오는 중…</p></div>
+      </details>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="list-h">
+    <h2 id="list-h">공개된 글</h2>
+    <nav class="tabs" role="tablist" aria-label="글 종류">
+      <button role="tab" data-t="all" aria-selected="true">전체</button>
+      <button role="tab" data-t="review" aria-selected="false">후기</button>
+      <button role="tab" data-t="feedback" aria-selected="false">피드백</button>
+      <button role="tab" data-t="report" aria-selected="false">제보</button>
+    </nav>
+    <div id="list"><p class="note">불러오는 중…</p></div>
+  </section>
+
+  <footer>
+    <p>게시판 글은 작성자 개인의 경험과 의견이며 운영자의 판단이나 사실 확인을 뜻하지 않아요.</p>
+    <p>개인정보·권리 침해 신고는 각 글의 "신고" 또는 "삭제 요청" 버튼으로 보내 주세요.</p>
+  </footer>
+</div>
+<script src="board.js"></script>
+</body>
+</html>

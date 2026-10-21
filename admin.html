@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>게시판 운영자</title>
+<link rel="stylesheet" href="/fonts/pretendard/pretendard.css">
+<link rel="stylesheet" href="board.css">
+</head>
+<body>
+<div class="wrap wide">
+  <header class="top">
+    <div>
+      <h1>게시판 운영자</h1>
+      <p class="sub">글 검토·공개, 진행 상태, 답변, 신고·삭제·정정 요청 처리</p>
+    </div>
+    <a class="navlink" href="/board.html">공개 게시판 보기</a>
+  </header>
+
+  <section class="panel" id="loginBox">
+    <label class="f" for="adm">운영자 비밀번호 <small>Vercel 환경변수 ADMIN_TOKEN 값이에요. 이 브라우저 탭을 닫으면 지워져요.</small>
+      <input type="password" id="adm" autocomplete="current-password">
+    </label>
+    <div class="row"><button class="primary" id="enter">들어가기</button></div>
+    <p class="msg" id="loginMsg" role="status"></p>
+  </section>
+
+  <div id="main" hidden>
+    <nav class="tabs" role="tablist" aria-label="보기">
+      <button role="tab" data-v="pending" aria-selected="true">검토 대기 <span id="cPending"></span></button>
+      <button role="tab" data-v="published" aria-selected="false">공개 중</button>
+      <button role="tab" data-v="closed" aria-selected="false">반려·비공개</button>
+      <button role="tab" data-v="requests" aria-selected="false">신고·삭제·정정 요청 <span id="cReq"></span></button>
+    </nav>
+    <p class="note">작성 계정의 이메일은 이 화면에서만 보여요. 공개 화면에는 닉네임만 나가요. 계정 인증은 이메일 소유 확인이며 실명 확인이 아니에요.</p>
+    <div id="view" class="wrap wide"></div>
+  </div>
+</div>
+<script src="admin.js"></script>
+</body>
+</html>
