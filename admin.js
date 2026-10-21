@@ -106,6 +106,7 @@
     $('#cPending').textContent = pend.length ? '(' + pend.length + ')' : '';
     $('#cReq').textContent = openReq.length ? '(' + openReq.length + ')' : '';
     var list;
+    if (view === 'stats') return renderStats(v);
     if (view === 'requests') {
       list = data.requests;
       if (!list.length) return v.appendChild(el('div', { class: 'empty', text: '받은 요청이 없어요.' }));
@@ -114,6 +115,41 @@
     list = data.posts.filter(function (p) { return view === 'pending' ? p.status === 'pending' : view === 'published' ? p.status === 'published' : (p.status === 'rejected' || p.status === 'hidden'); });
     if (!list.length) return v.appendChild(el('div', { class: 'empty', text: '해당하는 글이 없어요.' }));
     list.forEach(function (p) { v.appendChild(postCard(p)); });
+  }
+
+  /* ---------- 이용 통계 ---------- */
+  var OUTN = { normal: '일반 리더', harm: '피해 있음', unknown: '모름' };
+  function renderStats(v) {
+    v.appendChild(el('p', { class: 'note', text: '불러오는 중…' }));
+    fetch('/api/stats?scope=report&days=365', { headers: { Authorization: 'Bearer ' + pw } })
+      .then(function (r) { return r.json().then(function (j) { j.__status = r.status; return j; }); })
+      .then(function (r) {
+        v.textContent = '';
+        if (r.__status !== 200) return v.appendChild(el('div', { class: 'empty', text: r.message || '통계를 불러오지 못했어요.' }));
+        var s = r.stats, o = s.outcome || {}, b = r.board;
+        v.appendChild(el('div', { class: 'post' }, [
+          el('h3', { text: '최근 1년 익명 통계 참여 ' + s.n + '건' }),
+          el('p', { text: '일반 리더 ' + (o.normal || 0) + ' · 피해 있음 ' + (o.harm || 0) + ' · 모름 ' + (o.unknown || 0) }),
+          el('p', { class: 'note', text: '게시판: 검토 대기 ' + b.pending + ' · 이번 주 새 글 ' + b.newThisWeek + ' · 진행 중 피드백 ' + b.feedbackOpen + ' · 진행 중 제보 ' + b.reportsOpen + ' · 처리 대기 요청 ' + b.requestsOpen })]));
+        var rows = Object.keys(s.signals).map(function (k) { var c = s.signals[k]; return { k: k, all: c.all || 0, n: c.normal || 0, h: c.harm || 0 }; })
+          .sort(function (a, b2) { return b2.all - a.all; });
+        var pct = function (x, base) { return base ? Math.round(x / base * 100) + '%' : '-'; };
+        var tb = el('tbody');
+        tb.appendChild(el('tr', null, ['표현 항목', '전체', '일반 리더 중', '피해 사례 중', '검토 제안'].map(function (t) { return el('td', { class: 'note', text: t }); })));
+        rows.forEach(function (x) {
+          var pn = o.normal ? x.n / o.normal : 0, ph = o.harm ? x.h / o.harm : 0, hint = '';
+          if ((o.normal || 0) >= 20 && pn >= 0.4 && ph <= pn * 1.2) hint = '일반 리더에게도 흔함 · 안내 문구 완화 검토';
+          else if ((o.harm || 0) >= 20 && ph >= 0.3 && ph >= pn * 2) hint = '피해 사례에서 더 자주 보임';
+          tb.appendChild(el('tr', null, [el('td', { text: x.k }), el('td', { class: 'n', text: String(x.all) }), el('td', { class: 'n', text: pct(x.n, o.normal) }), el('td', { class: 'n', text: pct(x.h, o.harm) }), el('td', { class: 'note', text: hint })]));
+        });
+        v.appendChild(el('div', { class: 'post' }, [el('h3', { text: '표현 항목별 분포' }), el('div', { class: 'tablewrap' }, [el('table', { class: 'sig' }, [tb])]),
+          el('p', { class: 'note', text: '참여자가 직접 고른 결과를 합산한 값이라 검증된 정답이 아니에요. 일부러 틀린 결과를 많이 보내는 경우도 있을 수 있으니, 기준을 바꿀 때는 게시판 피드백과 함께 판단하세요. 응답이 20건 미만이면 검토 제안을 표시하지 않아요.' })]));
+        var fl = el('tbody');
+        Object.keys(s.flags).forEach(function (k) { var c = s.flags[k]; fl.appendChild(el('tr', null, [el('td', { text: k }), el('td', { class: 'n', text: String(c.all || 0) }), el('td', { class: 'n', text: pct(c.normal || 0, o.normal) }), el('td', { class: 'n', text: pct(c.harm || 0, o.harm) })])); });
+        v.appendChild(el('div', { class: 'post' }, [el('h3', { text: '주의 표현(결제·재촉 등)' }), el('div', { class: 'tablewrap' }, [el('table', { class: 'sig' }, [fl])])]));
+        var days = Object.keys(s.byDay || {}).sort().slice(-30);
+        v.appendChild(el('div', { class: 'post' }, [el('h3', { text: '최근 30일 날짜별 참여' }), el('p', { class: 'note', text: days.map(function (d) { return d.slice(5) + ' ' + s.byDay[d]; }).join(' · ') || '아직 없어요.' })]));
+      });
   }
 
   if (pw) load();

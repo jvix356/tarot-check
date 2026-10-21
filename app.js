@@ -348,6 +348,8 @@ function render(){
   }</tbody></table></div></div></details></section>`;
   h += `<section class="panel"><h3>후기·피드백·제보</h3><p class="note">판독 결과가 맞았는지, 고쳤으면 하는 점, 겪은 사례를 게시판에 남겨 주세요. 판독기에 붙여넣은 리딩은 자동으로 전송되지 않아요. 게시판에는 직접 써서 제출한 내용만 저장돼요.</p><div class="btns"><a class="navbtn" href="/board.html">게시판으로 가기</a></div></section>`;
   out.innerHTML = h;
+  // 익명 통계(stats.js)용: 본문이 아니라 관찰 항목 이름·개수만 넘겨요. 보낼지는 이용자가 정해요.
+  try{ const d={signals:st.rows.map(x=>x.label),flags,spread:spreadName,cards:slots.length,len:text.length}; window.__tcLast=d; window.dispatchEvent(new CustomEvent("tc:analysis",{detail:d})); }catch{}
 }
 
 document.addEventListener("click", async e=>{

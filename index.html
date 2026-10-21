@@ -155,7 +155,7 @@ footer p{margin:0}
 
   <nav class="tabs" role="tablist" aria-label="기능 선택">
     <button role="tab" id="tab-read" data-v="read" aria-selected="true" aria-controls="readView">리딩 판독</button>
-    <button role="tab" id="tab-cmp" data-v="compare" aria-selected="false" aria-controls="cmpView">같은 사람인지 비교</button>
+    <button role="tab" id="tab-cmp" data-v="compare" aria-selected="false" aria-controls="cmpView">동일인 의심 비교</button>
   </nav>
 
   <div id="readView" role="tabpanel" aria-labelledby="tab-read" style="display:flex;flex-direction:column;gap:20px">
@@ -227,7 +227,7 @@ footer p{margin:0}
   <section class="panel" id="notice" aria-labelledby="notice-h">
     <h2 id="notice-h">개인정보·저작권·공유 안내</h2>
     <ul class="ev">
-      <li><div><p style="font-weight:600">개인정보</p><p class="reason">판독기에 붙여넣은 리딩, 평소 말투, 계정 글은 이 브라우저 안에서만 분석되고 서버로 보내거나 저장하지 않아요. 페이지를 닫으면 사라져요. 게시판에는 이메일 인증 후 직접 써서 제출한 글만 저장되고, 공개 화면에는 닉네임만 보여요.</p></div></li>
+      <li><div><p style="font-weight:600">개인정보</p><p class="reason">판독기에 붙여넣은 리딩, 평소 말투, 계정 글은 이 브라우저 안에서만 분석되고 서버로 보내거나 저장하지 않아요. 페이지를 닫으면 사라져요. 결과 아래 '익명 통계 참여'에 동의하고 직접 보낼 때만 관찰 항목 이름·개수와 고른 결과가 날짜별 합계로 저장돼요(본문·질문·IP 제외). 동일인 비교에 넣은 사진도 브라우저 안에서만 처리해요. 게시판에는 이메일 인증 후 직접 써서 제출한 글만 저장되고, 공개 화면에는 닉네임만 보여요.</p></div></li>
       <li><div><p style="font-weight:600">저작권</p><p class="reason">붙여넣은 리딩 글의 저작권은 원래 쓴 사람에게 있어요. 다른 사람의 글을 게시판이나 SNS에 통째로 옮기지 말고 필요한 부분만 짧게 인용해 주세요. 기본 카드 그림은 이 사이트용 도안·AI 생성 일러스트예요. 다른 덱은 출처와 사용 권한이 확인되어 등록된 그림만 사용해요. 덱 이름 입력만으로 외부 이미지를 수집하지 않아요.  글꼴은 Pretendard(SIL Open Font License 1.1)를 사용해요. <a href="/fonts/pretendard/LICENSE.txt">글꼴 라이선스 보기</a></p></div></li>
       <li><div><p style="font-weight:600">결과를 공유할 때</p><p class="reason">결과 화면을 캡처해 공유할 때는 상대 아이디·프로필·계좌·전화번호를 가려 주세요. 판독 결과는 참고용 추측이라, 특정인을 사기꾼으로 지목하는 근거로 쓰면 명예훼손 등 법적 책임이 생길 수 있어요.</p></div></li>
     </ul>
@@ -241,5 +241,7 @@ footer p{margin:0}
 
 <script src="/cards.js"></script>
 <script src="/app.js"></script>
+<script src="/stats.js"></script>
+<script src="/compare-plus.js"></script>
 </body>
 </html>
