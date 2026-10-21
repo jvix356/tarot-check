@@ -218,9 +218,45 @@ function rang(w){ const ch = w.trim().slice(-1); let b;
   return w + (b ? "이랑" : "랑"); }
 const POSWORD =/긍정|희망|좋은|성공|행복|기회|밝은|연락이 올|가능성(?:이|은) (?:높|열려)|잘 될|이루어/;
 
+
+function selectedCardSlots(text){
+  const explicit=$("#knownCards").value.trim();
+  if(explicit){
+    const unknown=[];
+    const slots=explicit.split(/\n|;|；/).filter(x=>x.trim()).slice(0,10).flatMap((line,i)=>{
+      const found=namesIn(line);
+      if(!found.length){unknown.push(line.slice(0,80));return [];}
+      return found.map(n=>({pos:(line.split(/[:：]/).length>1?line.split(/[:：]/)[0].trim():String(i+1)+"번째 입력").slice(0,30),card:n.name+(n.ori?" "+n.ori:""),guess:false,why:"사용자가 제공한 카드명이에요. 실제 추첨 여부는 확인하지 않았어요."}));
+    }).slice(0,10);
+    return {slots,unknown,explicit:true};
+  }
+  const {cardSegs}=analyzeSpread(text);
+  return {slots:cardSegs.slice(0,10).flatMap((s,i)=>{
+    if(s.names.length)return s.names.slice(0,3).map(n=>({pos:s.pos||String(i+1)+"번째 구간",card:n.name+(n.ori?" "+n.ori:""),guess:false,why:"본문에 등장한 카드명이에요. 실제 추첨을 증명하지 않아요."}));
+    const match=scoreCards(s.body)[0];
+    return match?[{pos:s.pos||String(i+1)+"번째 구간",card:match.c.name,guess:true,why:"겹치는 키워드: "+[...new Set(match.hits)].slice(0,3).join(", ")+". 실제 사용 카드·방향을 알아낸 결과가 아니에요."}]:[];
+  }).slice(0,10),unknown:[],explicit:false};
+}
+function optionalCardResult(text){
+  const {slots,unknown,explicit}=selectedCardSlots(text);
+  const deck=$("#deckName").value.trim();
+  const show=$("#showCardImages").checked;
+  if(!slots.length&&!explicit&&!deck)return '<section class="panel"><h2>카드 해석 · 후보 (선택)</h2><p class="note">관련 키워드가 부족해 후보를 표시하지 않아요. 카드명을 알면 위 선택 항목에 입력해 주세요. 문체 분석과는 별개예요.</p></section>';
+  const named=slots.filter(x=>!x.guess);
+  const cards=named.map(x=>CARDS.find(c=>c.name===x.card.replace(/ (정|역)방향$/,""))).filter(Boolean);
+  const q=$("#myq").value.trim();
+  const flow=cards.length?cards.map((c,i)=>String(i+1)+"번째 "+c.name+": "+(/역방향$/.test(named[i].card)?c.rv:c.up).slice(0,2).join("·")).join(" → "):"";
+  return '<section class="panel" aria-labelledby="card-result-heading"><h2 id="card-result-heading">카드 해석 · 후보 (선택)</h2><p class="caveat">문체 관찰과 별개의 키워드 참고 결과예요. 실제 사용 카드·배열·덱·AI 사용 여부를 확인한 것은 아니에요.</p>'+
+    (deck?'<p class="note">입력한 덱: '+esc(deck)+'. 이 덱의 그림은 등록되지 않아 '+(show?'사이트 기본 도안으로':'텍스트로')+' 표시해요. 덱 이름만으로 사용 카드를 알 수는 없어요.</p>':'<p class="note">그림은 사이트의 기본 도안·AI 생성 일러스트이며, 상담자가 사용한 덱의 그림이 아니에요.</p>')+
+    (unknown.length?'<p class="note">인식하지 못한 입력: '+esc(unknown.join(" / "))+' — 카드명을 확인해 주세요.</p>':'')+
+    (slots.length?'<div class="spread">'+slots.map(x=>'<div class="slot '+(x.guess?'guess':'')+'"><span class="pos">'+esc(x.pos)+'</span>'+(show?cardImg(x):'')+'<p class="card">'+esc(x.card)+'</p><span class="pill mid">'+(x.guess?'키워드상 관련 후보':explicit?'입력한 카드명':'본문에 적힌 카드명')+'</span><p class="why">'+esc(x.why)+'</p></div>').join('')+'</div>':'<p class="note">카드명을 추가로 입력해 주세요.</p>')+
+    (flow?'<h3>입력·본문 카드의 순서 연결</h3>'+(q?'<p class="note">질문: '+esc(q)+'</p>':'')+'<p>'+esc(flow)+'</p><p class="note">위 흐름은 카드의 대표 키워드를 입력 순서로 연결한 참고예요. 질문의 실제 상황이나 미래를 확인한 해석은 아니에요. 관련 후보만으로는 조합 해석을 만들지 않아요.</p>':'')+'</section>';
+}
+
 function render(){
   const text = $("#txt").value.trim(), out = $("#out");
-  if (text.length < 40){ out.innerHTML = `<div class="empty">받은 리딩을 위 칸에 붙여넣으면 바로 판독 결과가 나와요.</div>`; return; }
+  if (text.length > 20000){out.innerHTML='<div class="empty">리딩은 20,000자 이내로 나눠 입력해 주세요.</div>';return;}
+  if (text.length < 40){ out.innerHTML = '<div class="empty">문체 관찰은 리딩 40자 이상일 때 표시해요. 짧은 글로 작성 방식을 판단할 수는 없어요.</div>'+optionalCardResult(text); return; }
   const st = styleAnalyze(text);
   const {segs, cardSegs} = analyzeSpread(text);
   const [spreadName, spreadDesc] = guessSpreadName(cardSegs);
@@ -260,22 +296,16 @@ function render(){
 
   // 판정
   const s = st.score ?? 0;
-  const title = s>=70 ? "AI로 만든 글에서 자주 보이는 특징이 많아요" : s>=50 ? "AI 글의 특징이 꽤 보여요" : s>=30 ? "AI 글의 특징이 일부 보여요" : "AI 글의 특징이 적게 보여요";
-  const method = s>=50 ? (namedCount || slots.length ? "카드 이름과 질문을 AI에 넣어 받은 해석을 그대로 보냈을 수도 있어요." : "카드 없이 AI에 질문만 넣어 받은 글일 수도 있어요.")
+  const unusedTitle = s>=70 ? "AI로 만든 글에서 자주 보이는 특징이 많아요" : s>=50 ? "AI 글의 특징이 꽤 보여요" : s>=30 ? "AI 글의 특징이 일부 보여요" : "AI 글의 특징이 적게 보여요";
+  const title = "문체 관찰 결과";
+  const unusedMethod = s>=50 ? (namedCount || slots.length ? "카드 이름과 질문을 AI에 넣어 받은 해석을 그대로 보냈을 수도 있어요." : "카드 없이 AI에 질문만 넣어 받은 글일 수도 있어요.")
     : s>=30 ? "해설서나 AI 답을 참고해 고쳐 썼을 수도 있고, 직접 썼을 수도 있어요." : "AI 특징이 적다는 것만으로 사람이 직접 썼다고 볼 수는 없어요. AI 글을 고쳐 쓰면 특징이 거의 남지 않아요.";
 
+  const method = "AI 사용 여부: 확인할 수 없음. 아래 표현은 사람과 AI 모두 사용할 수 있어요. 특징이 적어도 사람 작성이라는 뜻은 아니에요.";
+
   // 왜 이런 리딩이 나왔나
-  const why = [];
-  if (s >= 50) why.push(["ai", "챗봇이 자주 쓰는 구성이에요", `${emojiHead?"이모지 소제목, ":""}카드마다 뜻을 한 문단씩 풀고 마지막에 '종합'으로 묶는 틀은 AI 타로 답변에서 자주 보이는 형식이에요. 사람도 이렇게 쓸 수 있어요.`]);
-  if (textbook >= 2 && textbook >= namedCount*0.6) why.push(["ai", "카드 뜻을 교과서 그대로 썼어요", "카드마다 해설서 대표 키워드가 그대로 들어 있어요. 카드끼리 엮어 읽은 흔적 없이 뜻만 나열돼 있다면 해설서나 AI를 참고했을 수 있어요."]);
-  if (mismatches) why.push(["ai", "카드 이름과 해석이 안 맞는 곳이 있어요", `${mismatches}곳에서 카드 이름과 다른 카드의 뜻을 쓰고 있어요. 단순 실수일 수도 있지만, 카드를 보지 않고 썼거나 AI가 뜻을 섞었을 때도 생겨요.`]);
-  if (sugarcoat) why.push(["warn", "부정적인 카드도 결국 좋게 포장했어요", "보통 힘든 의미의 카드가 나왔는데 결론은 희망적으로 끝나요. 듣기 좋은 결론으로 마무리하려는 리딩이나 AI 답에서 자주 보여요."]);
-  if (st.lowFit) why.push(["warn", "내 질문이 거의 반영 안 됐어요", "질문의 구체적 내용 없이 일반론만 있어요. 아무 질문에나 붙일 수 있는 글이에요."]);
-  if (st.gap) why.push(["ai", "평소 말투와 리딩 말투가 달라요", "평소 글과 리딩의 어미·말버릇이 크게 달라요. 카드는 직접 뽑았어도 해석은 AI를 참고했을 수 있어요."]);
-  if (st.fast) why.push(["ai", "답장이 너무 빨라요", "이 길이를 그 시간에 직접 쓰기는 쉽지 않아요. 미리 써 둔 글이나 생성된 글을 붙여넣었을 수 있어요."]);
-  if (tail) why.push(["warn", "추가 리딩을 권하며 끝나요", "'원하시면 ~도 봐드릴게요'는 ChatGPT가 답변 끝에 자주 붙이는 문장이기도 하고, 추가 결제로 이어가는 영업 멘트이기도 해요."]);
-  if (s < 30) why.push(["", "AI 특징이 적게 보여요", "구어체나 카드끼리 엮은 해석 같은 표현이 보여요. 다만 이것만으로 사람이 직접 썼다고 판단할 수는 없어요."]);
-  if (!why.length) why.push(["", "뚜렷한 패턴이 적어요", "판단할 근거가 부족해요. 아래 검증 질문을 보내 반응을 보세요."]);
+  const why = st.rows.map(x=>["",x.label.replace(/^사람 신호 · /,""),x.ex ? "발견한 표현: "+x.ex : "본문에서 관찰한 형식이에요. 작성 방식의 증거는 아니에요."]);
+  if (!why.length) why.push(["","일치하는 표현 패턴이 없어요","이 도구가 정한 패턴이 없다는 뜻이며, 사람이 썼다는 증거가 아니에요."]);
 
   // 추정 프롬프트
   const q = $("#myq").value.trim() || (text.match(/질문\s*[:：]\s*([^\n]+)/)||[])[1] || (text.match(/^[^\n]{4,60}\?/m)||[])[0]?.replace(/^[^\p{L}]+/u,"") || "(내 질문)";
@@ -292,38 +322,29 @@ function render(){
   const c1 = slots.find(x=>x.card!=="추측 불가")?.card.replace(/ (정|역)방향$/,"") || "첫 번째";
   const c2 = slots.filter(x=>x.card!=="추측 불가")[1]?.card.replace(/ (정|역)방향$/,"") || "두 번째";
   const vqs = [
-    ["혹시 펼친 카드를 오늘 날짜랑 제 닉네임 적은 종이랑 같이 찍어서 보내주실 수 있을까요?", "실제로 카드를 뽑았는지 확인하는 데 도움이 돼요."],
-    [`${c1} 카드는 그림에서 어떤 부분을 보고 그렇게 해석하신 거예요? 1~2분 안에 짧게만요!`, "그림의 구체적인 부분을 짚어 설명하는지 볼 수 있어요."],
-    [`${rang(c1)} ${c2} 같이 놓고 보면 어떤 의미예요? 짧게요`, "카드끼리 엮어 읽을 수 있는지 볼 수 있어요."],
-    ["아 참, 말 안 했는데 사실 그 사람이랑 연락은 이미 하고 있어요. 그럼 해석이 달라지나요?", "새 정보를 어떻게 반영하는지 볼 수 있어요."],
-    ["어떤 덱 쓰세요? 스프레드는 뭐로 뽑으셨어요?", `이 판독기는 '${spreadName}'로 추측했어요. 답과 비교해 보세요.`],
+    ["상담에 AI나 자동화 도구를 사용하셨나요? 사용했다면 어떤 부분인가요?", "작업 과정을 직접 확인하기 위한 질문이에요."],
+    ["사용한 덱과 실제 카드명·배열을 알려주실 수 있나요?", "본문의 키워드 후보와 실제 추첨은 달라요."],
+    ["제 질문과 각 카드의 연결을 설명해 주실 수 있나요?", "답변 속도나 길이로 AI 사용 여부를 판단하지 마세요."]
   ];
 
   let h = `<section class="panel" aria-labelledby="r1"><div class="verdict nogauge"><div style="display:flex;flex-direction:column;gap:8px;min-width:0">
     <span class="pill mid" style="align-self:flex-start">참고용 · 확률이나 판정이 아니에요</span>
-    <p class="vtitle" id="r1">${esc(title)}</p>${level(s,"AI 글 특징")}<p style="margin:0">${esc(method)}</p></div></div></section>`;
+    <p class="vtitle" id="r1">${esc(title)}</p><p style="margin:0">${esc(method)}</p></div></div></section>`;
 
   const highFlags = flags.filter(k=>SCAM[k][2]);
   if (highFlags.length || flags.length >= 2) h += `<section class="panel danger"><h3>돈을 보내기 전에 확인이 필요해요</h3><p style="margin:0">${esc(flags.map(k=>SCAM[k][0]).join(", "))} 표현이 있어요. AI 사용 여부와 상관없이, 결제하기 전에 입금 계좌·전화번호를 더치트나 경찰청 사이버범죄 신고시스템에서 조회하고 주변과 상의해 보세요.</p></section>`;
-  h += `<section class="panel"><h3>왜 이런 리딩이 나왔을까</h3><ul class="ev">${why.map(([c,t,d])=>`<li class="${c}"><div><p style="font-weight:600">${esc(t)}</p><p class="reason">${esc(d)}</p></div></li>`).join("")}</ul></section>`;
+  h += `<section class="panel"><h3>글에서 살펴볼 표현</h3><ul class="ev">${why.map(([c,t,d])=>`<li class="${c}"><div><p style="font-weight:600">${esc(t)}</p><p class="reason">${esc(d)}</p></div></li>`).join("")}</ul></section>`;
 
-  h += `<section class="panel"><div class="btns" style="justify-content:space-between"><h3>사용한 스프레드 추측</h3><span class="pill mid">${esc(spreadName)}</span></div><p class="note">${esc(spreadDesc)}</p>
-    ${slots.length ? `<div class="spread">${slots.map(x=>`<div class="slot ${x.guess?"guess":""}"><span class="pos">${esc(x.pos)}</span>${cardImg(x)}<p class="card">${esc(x.card)}</p>
-      ${x.guess?`<span class="pill ${x.conf==="높음"?"human":"mid"}" style="align-self:flex-start">${x.card==="추측 불가"?"추측 불가":"예상 카드 · 단서 "+esc({"높음":"많음","중간":"보통","낮음":"적음"}[x.conf]||x.conf)}</span>`:`<span class="pill ${x.mismatch?"ai":"human"}" style="align-self:flex-start">${x.mismatch?"이름·해석 불일치":"글에 적힌 카드"}</span>`}
-      <p class="why">${esc(x.why)}</p>${x.alt?`<p class="alt">${esc(x.alt)}</p>`:""}</div>`).join("")}</div>
-      <p class="note">점선 칸은 카드 이름이 없어서 해석 내용으로 추측한 카드예요. 카드 뜻 키워드로 고른 거라 실제와 다를 수 있어요. 카드 그림은 이 사이트에서 직접 만든 도안이에요.</p>` : ""}</section>`;
-
-  if (s >= 40) h += `<section class="panel"><h3>AI에 넣었다면 이런 질문이었을 수도 있어요 (추측)</h3><p class="note">직접 AI에 넣어 비교해 볼 수 있어요. 비슷하게 나와도 같은 방법으로 만들었다는 증거는 아니에요.</p>
-    <div class="q"><pre class="prompt" id="pr">${esc(prompt)}</pre><button class="small" data-copy="pr">복사</button></div></section>`;
+  h += optionalCardResult(text);
 
   h += `<section class="panel"><h3>돈을 보내기 전에 확인할 표현</h3>${flags.length ? `<ul class="ev">${flags.map(k=>`<li class="${SCAM[k][2]?"ai":"warn"}"><div><p style="font-weight:600">${esc(SCAM[k][0])} <span class="pill mid">주의</span>${auto.has(k)&&!keys.has(k)?` <span class="note">글에서 발견</span>`:""}</p><p class="reason">${esc(SCAM[k][1])}</p></div></li>`).join("")}</ul>`
     : `<p class="note">글에서 주의할 표현을 찾지 못했어요. 선입금·추가 결제 요구가 있었다면 위 '더 정확하게 보기'에서 체크하세요.</p>`}</section>`;
 
-  h += `<section class="panel"><h3>상대에게 보내볼 확인 질문</h3><p class="note">직접 카드를 보고 해석했다면 어렵지 않게 답할 수 있는 질문이에요. 답을 못 한다고 해서 사기라는 뜻은 아니에요.</p>
+  h += `<section class="panel"><h3>상대에게 보내볼 확인 질문</h3><p class="note">작업 과정과 설명을 확인하는 질문이에요. 답변 속도·길이·방식만으로 AI 사용이나 사기 여부를 판단하지 마세요.</p>
     ${vqs.map((v,i)=>`<div class="q"><p id="vq${i}">${esc(v[0])}</p><button class="small" data-copy="vq${i}">복사</button><span class="purpose">${esc(v[1])}</span></div>`).join("")}</section>`;
 
-  h += `<section class="panel"><details class="more" style="background:var(--paper)"><summary>판정 근거 자세히 보기 (문체 지문 ${st.rows.length}개)</summary><div class="body"><div class="tablewrap"><table class="sig"><tbody>${
-    st.rows.length ? [...st.rows].sort((a,b)=>b.pts-a.pts).map(x=>`<tr><td><span style="color:${x.human?'var(--human)':'var(--ai)'};font-weight:600">${x.human?"사람":"AI"}</span> ${esc(x.label)}</td><td class="ex">${esc(x.ex)}</td><td class="n">${esc(x.n)}</td></tr>`).join("") : `<tr><td class="note">걸리는 지문이 없어요.</td></tr>`
+  h += `<section class="panel"><details class="more" style="background:var(--paper)"><summary>문체 관찰 항목 자세히 보기 (문체 지문 ${st.rows.length}개)</summary><div class="body"><div class="tablewrap"><table class="sig"><tbody>${
+    st.rows.length ? [...st.rows].sort((a,b)=>b.pts-a.pts).map(x=>`<tr><td><span style="color:${x.human?'var(--human)':'var(--ai)'};font-weight:600">표현</span> ${esc(x.label)}</td><td class="ex">${esc(x.ex)}</td><td class="n">${esc(x.n)}</td></tr>`).join("") : `<tr><td class="note">걸리는 지문이 없어요.</td></tr>`
   }</tbody></table></div></div></details></section>`;
   h += `<section class="panel"><h3>후기·피드백·제보</h3><p class="note">판독 결과가 맞았는지, 고쳤으면 하는 점, 겪은 사례를 게시판에 남겨 주세요. 판독기에 붙여넣은 리딩은 자동으로 전송되지 않아요. 게시판에는 직접 써서 제출한 내용만 저장돼요.</p><div class="btns"><a class="navbtn" href="/board.html">게시판으로 가기</a></div></section>`;
   out.innerHTML = h;
@@ -475,8 +496,9 @@ const EXAMPLE = `🔮 그 사람과 다시 연락이 될까요?
 const txt = $("#txt"); txt.value = EXAMPLE; let isEx = true;
 const r = debounce(render);
 txt.addEventListener("input",()=>{ if(isEx){ isEx=false; $("#exNote").hidden=true; } r(); });
-["#myq","#mins","#normal"].forEach(s=>$(s).addEventListener("input", r));
+["#myq","#mins","#normal","#knownCards","#deckName"].forEach(s=>$(s).addEventListener("input", r));
 $$("#ctx input").forEach(c=>c.addEventListener("change", render));
-$("#clear").onclick = ()=>{ ["#txt","#myq","#mins","#normal"].forEach(s=>$(s).value=""); $$("#ctx input").forEach(c=>c.checked=false); isEx=false; $("#exNote").hidden=true; render(); txt.focus(); };
+$("#clear").onclick = ()=>{ ["#txt","#myq","#mins","#normal","#knownCards","#deckName"].forEach(s=>$(s).value=""); $$("#ctx input").forEach(c=>c.checked=false); isEx=false; $("#exNote").hidden=true; render(); txt.focus(); };
+$("#showCardImages").addEventListener("change",render);
 render();
 })();
