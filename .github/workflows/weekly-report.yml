@@ -1,0 +1,22 @@
+name: Weekly report
+# 매주 월요일 오전 9시(한국 시간)쯤 통계·게시판 처리 대기 건수를 이슈로 올려 알려줘요.
+on:
+  schedule:
+    - cron: '7 0 * * 1'
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Make report issue
+        run: node scripts/weekly-report.mjs
+        env:
+          REPORT_TOKEN: ${{ secrets.REPORT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
