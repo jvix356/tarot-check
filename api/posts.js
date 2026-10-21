@@ -2,7 +2,7 @@ import { readJSON, writeJSON } from '../lib/store.js';
 import { send, readBody, newId, sameOrigin, clip } from '../lib/util.js';
 import { currentAccount } from '../lib/accounts.js';
 import { checkText, checkPrivate } from '../lib/filter.js';
-import { TYPES } from '../lib/board.js';
+import { TYPES, publicIndex } from '../lib/board.js';
 
 const DAY = 864e5;
 
@@ -21,7 +21,7 @@ export default async function handler(req, res) {
       }
       const idx = (await readJSON('index/public.json')) || { posts: [] };
       res.setHeader('Cache-Control', 'no-store');
-      return send(res, 200, idx);
+      return send(res, 200, publicIndex(idx));
     }
     if (req.method !== 'POST') return send(res, 405, { error: 'method' });
     if (!sameOrigin(req)) return send(res, 403, { error: 'origin' });
@@ -48,7 +48,7 @@ export default async function handler(req, res) {
 
     const chk = checkText(title + '\n' + body);
     if (chk.blocked.length) return send(res, 400, { error: 'filtered', blocked: chk.blocked,
-      message: `공개 글에 쓸 수 없는 내용이 있어요: ${chk.blocked.join(', ')}. 고쳐서 다시 올려 주세요.${type === 'report' ? ' 계좌·연락처 같은 정보는 아래 "운영자에게만 전달" 칸에 적어 주세요.' : ''}` });
+      message: `공개 글에 쓸 수 없는 내용이 있어요: ${chk.blocked.join(', ')}. 고쳐서 다시 올려 주세요.${type === 'report' ? ' 계정 아이디·링크·계좌·연락처 같은 정보는 아래 "운영자에게만 전달" 칸에 적어 주세요.' : ''}` });
     const noteBad = note ? checkPrivate(note) : [];
     if (noteBad.length) return send(res, 400, { error: 'filtered', blocked: noteBad, message: `운영자 전달 내용에 쓸 수 없는 표현이 있어요: ${noteBad.join(', ')}` });
 

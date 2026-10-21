@@ -22,12 +22,12 @@
     <h2 id="rules-h">이용 안내</h2>
     <ul class="plain">
       <li>공개 화면에는 <b>직접 정한 닉네임만</b> 보여요. 이메일은 글쓴이 확인용으로 운영자만 볼 수 있어요.</li>
-      <li>이메일 인증은 게시판 작성 계정 확인용이에요. <b>실명 확인이 아니에요.</b></li>
+      <li>이메일 인증은 해당 이메일을 사용할 수 있는지 확인하는 절차예요. <b>실명·신원 확인이나 제보 내용의 사실 확인이 아니에요.</b></li>
       <li>모든 글과 댓글은 <b>운영자가 확인한 뒤</b> 공개돼요. 욕설·모욕·음란·위협·개인정보·광고는 등록되지 않아요.</li>
       <li>판독기에 붙여넣은 리딩 본문은 서버로 보내지 않아요. 게시판에는 <b>직접 써서 제출한 내용만</b> 저장돼요.</li>
       <li>공개된 글에 문제가 있으면 각 글의 <b>신고 · 삭제 요청 · 정정 요청</b> 버튼을 눌러 주세요. 로그인하지 않아도 보낼 수 있어요.</li>
     </ul>
-    <p class="legal">사실과 다른 내용을 알면서 올리거나 다른 사람의 명예·초상·저작권 등 권리를 침해하면, 작성자에게 민사·형사상 법적 책임이 생길 수 있어요. 특정인을 사기꾼이라고 단정하는 대신 겪은 일을 사실대로 적어 주세요.</p>
+    <p class="legal">사실과 다른 내용을 알면서 올리거나 다른 사람의 명예·초상·저작권 등 권리를 침해하면, 작성자에게 민사·형사상 법적 책임이 생길 수 있어요. 사실인 내용도 공개 방식에 따라 명예훼손 등 권리 침해 문제가 생길 수 있어요. 공개 제보는 특정인을 알아볼 수 없도록 수법·경험 위주로 적어 주세요.</p>
   </section>
 
   <section class="panel" aria-labelledby="write-h">
@@ -71,10 +71,10 @@
         </select>
       </label>
       <label class="f" for="wTitle">제목<input type="text" id="wTitle" maxlength="60"></label>
-      <label class="f" for="wBody">내용 <small>공개돼요. 전화번호·계좌·주소·이메일 같은 개인정보는 쓰지 마세요.</small>
+      <label class="f" for="wBody">내용 <small>공개돼요. 특정 계정 아이디·링크·실명·상호 등 상대를 식별할 정보나 전화번호·계좌·주소·이메일은 쓰지 마세요. 수법·경험 위주로 적어 주세요.</small>
         <textarea id="wBody" maxlength="3000"></textarea>
       </label>
-      <label class="f" for="wNote" id="noteWrap" hidden>운영자에게만 전달 (선택) <small>계좌번호·연락처·캡처 설명처럼 공개하면 안 되는 내용은 여기에 적어 주세요. 공개되지 않아요.</small>
+      <label class="f" for="wNote" id="noteWrap" hidden>운영자에게만 전달 (선택) <small>특정 계정 아이디·링크·계좌번호·연락처·캡처 설명처럼 공개하면 안 되는 내용은 여기에 적어 주세요. 공개되지 않아요.</small>
         <textarea id="wNote" class="short" maxlength="1500"></textarea>
       </label>
       <label class="check"><input type="checkbox" id="wAgree"> <span>사실대로 썼고, 다른 사람의 개인정보나 권리를 침해하는 내용이 없어요. 고의로 허위 사실을 올리면 법적 책임이 생길 수 있다는 안내를 확인했어요.</span></label>

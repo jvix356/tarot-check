@@ -163,10 +163,21 @@ const SIGNALS = [
  {label:"사람 신호 · 카드끼리 엮은 해석 (조합·같이 나온)", re:/조합|같이 나온|함께 나온|옆(?:에|의) 카드|앞 카드|뒤 카드|연결해서 보면/g, w:-.9, cap:3, human:true},
  {label:"사람 신호 · 직접 뽑은 경험 (섞을 때, 튀어나온 카드)", re:/제가 (?:뽑|섞|봤|느끼)|뽑(?:는|을) 때|섞(?:는|을) 때|튀어나온|떨어진 카드|점프 ?카드|느낌이 (?:와|들)/g, w:-1.5, cap:3, human:true},
 ];
+function signalEvidence(text, re) {
+  return [...text.matchAll(new RegExp(re.source, re.flags.includes('g') ? re.flags : re.flags + 'g'))].slice(0,3).map(m => {
+    const at = m.index, lineStart = text.lastIndexOf('\n', at - 1) + 1;
+    const lineEnd = text.indexOf('\n', at + m[0].length);
+    const start = Math.max(lineStart, at - 100), end = Math.min(lineEnd < 0 ? text.length : lineEnd, at + m[0].length + 100);
+    return { line: text.slice(0,at).split('\n').length, before: (start > lineStart ? '…' : '') + text.slice(start,at), match: m[0], after: text.slice(at+m[0].length,end) + (end < (lineEnd < 0 ? text.length : lineEnd) ? '…' : '') };
+  });
+}
+function renderEvidence(items) {
+  return (items || []).map(x => `<blockquote class="source-evidence"><span class="note">본문 ${x.line}줄</span><br>${esc(x.before)}<mark>${esc(x.match)}</mark>${esc(x.after)}</blockquote>`).join('');
+}
 function styleAnalyze(t){
   const rows = []; let raw = 0;
   for (const s of SIGNALS){ const m = t.match(s.re)||[]; if (!m.length) continue; const pts = Math.min(m.length, s.cap)*s.w; raw += pts;
-    rows.push({label:s.label, n:m.length+"회", pts, ex:[...new Set(m.map(x=>x.trim()))].slice(0,3).join(" · "), human:!!s.human}); }
+    rows.push({label:s.label, n:m.length+"회", pts, ex:[...new Set(m.map(x=>x.trim()))].slice(0,3).join(" · "), human:!!s.human, evidence:signalEvidence(t,s.re)}); }
   const sents = t.split(/(?<=[.!?。])\s+|\n+/).map(x=>x.trim()).filter(x=>x.length>6);
   if (sents.length >= 6){ const L = sents.map(x=>x.length), mean = L.reduce((a,b)=>a+b,0)/L.length; const cv = Math.sqrt(L.reduce((a,b)=>a+(b-mean)**2,0)/L.length)/mean;
     if (cv < .38){ raw += 1.4; rows.push({label:"문장 길이의 편차가 작은 편", n:"CV "+cv.toFixed(2), pts:1.4, ex:"본문 문장 길이로 계산한 값이며 작성 방식의 증거는 아니에요."}); }
@@ -304,7 +315,7 @@ function render(){
   const method = "AI 사용 여부: 확인할 수 없음. 아래 표현은 사람과 AI 모두 사용할 수 있어요. 특징이 적어도 사람 작성이라는 뜻은 아니에요.";
 
   // 왜 이런 리딩이 나왔나
-  const why = st.rows.map(x=>["",x.label.replace(/^사람 신호 · /,""),x.ex ? "발견한 표현: "+x.ex : "본문에서 관찰한 형식이에요. 작성 방식의 증거는 아니에요."]);
+  const why = st.rows.map(x=>["",x.label.replace(/^사람 신호 · /,""),x.ex ? (x.evidence ? "발견한 표현: " : "관찰 방법·한계: ")+x.ex : "본문에서 관찰한 형식이에요. 작성 방식의 증거는 아니에요."]);
   if (!why.length) why.push(["","일치하는 표현 패턴이 없어요","이 도구가 정한 패턴이 없다는 뜻이며, 사람이 썼다는 증거가 아니에요."]);
 
   // 추정 프롬프트
@@ -333,7 +344,7 @@ function render(){
 
   const highFlags = flags.filter(k=>SCAM[k][2]);
   if (highFlags.length || flags.length >= 2) h += `<section class="panel danger"><h3>돈을 보내기 전에 확인이 필요해요</h3><p style="margin:0">${esc(flags.map(k=>SCAM[k][0]).join(", "))} 표현이 있어요. AI 사용 여부와 상관없이, 결제하기 전에 입금 계좌·전화번호를 더치트나 경찰청 사이버범죄 신고시스템에서 조회하고 주변과 상의해 보세요.</p></section>`;
-  h += `<section class="panel"><h3>글에서 살펴볼 표현</h3><ul class="ev">${why.map(([c,t,d])=>`<li class="${c}"><div><p style="font-weight:600">${esc(t)}</p><p class="reason">${esc(d)}</p></div></li>`).join("")}</ul></section>`;
+  h += `<section class="panel"><h3>글에서 살펴볼 표현</h3><p class="note">표시한 원문에서 해당 표현을 찾았어요. 사람과 AI 모두 쓸 수 있는 표현이며, AI 사용의 증거·확률이 아니에요. 긴 줄은 발견한 부분 주변만 보여요.</p><ul class="ev">${why.map(([c,t,d])=>`<li class="${c}"><div><p style="font-weight:600">${esc(t)}</p><p class="reason">${esc(d)}</p>${renderEvidence(st.rows.find(x=>x.label.replace(/^사람 신호 · /,"")===t)?.evidence)}</div></li>`).join("")}</ul></section>`;
 
   h += optionalCardResult(text);
 

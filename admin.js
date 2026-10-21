@@ -60,7 +60,7 @@
     var a = p.author;
     return el('article', { class: 'post' }, [
       el('div', { class: 'meta' }, [el('span', { class: 'pill type', text: TYPE[p.type] }), el('span', { class: 'pill ' + (p.status === 'published' ? 'ok' : p.status === 'pending' ? 'wait' : 'bad'), text: STATUS[p.status] || p.status }), p.progress ? el('span', { class: 'pill', text: p.progress }) : null, el('b', { text: p.nickname }), el('span', { text: fmt(p.createdAt) })]),
-      el('div', { class: 'ops' }, [a ? ('작성 계정: ' + a.email + ' · 인증 ' + fmt(a.verifiedAt) + ' · 계정 ID ' + a.id + (a.disabled ? ' · 이용 제한 중' : '')) : '작성 계정 정보 없음']),
+      el('div', { class: 'ops' }, [a ? ('작성 계정: ' + a.email + ' · 이메일 소유 확인(실명 확인 아님) ' + fmt(a.verifiedAt) + ' · 계정 ID ' + a.id + (a.disabled ? ' · 이용 제한 중' : '')) : '작성 계정 정보 없음']),
       p.flags && p.flags.length ? el('p', { class: 'flags', text: '확인 필요: ' + p.flags.join(', ') }) : null,
       parent ? el('p', { class: 'note', text: '원글: ' + (parent.title || parent.body.slice(0, 40)) }) : null,
       p.title ? el('h3', { text: p.title }) : null,

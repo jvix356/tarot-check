@@ -1,3 +1,4 @@
+import { checkText } from '../lib/filter.js';
 import { readJSON, writeJSON, listPaths, remove } from '../lib/store.js';
 import { send, readBody, bearer, safeEqual, clip } from '../lib/util.js';
 import { allPosts, rebuildIndex, PROGRESS } from '../lib/board.js';
@@ -75,6 +76,10 @@ export default async function handler(req, res) {
         p.body = body; if (b.title !== undefined) p.title = clip(b.title, 60); p.editedAt = now; log('운영자 정정'); break;
       }
       default: return send(res, 400, { error: 'action' });
+    }
+    if (['publish', 'edit', 'reply'].includes(b.action)) {
+      const blocked = checkText([p.title, p.body, p.nickname, p.reply?.body].filter(Boolean).join('\n')).blocked;
+      if (blocked.length) return send(res, 400, { error: 'filtered', blocked, message: '공개 내용에서 계정·링크·개인정보 또는 금지 표현을 제거해 주세요: ' + blocked.join(', ') });
     }
     p.updatedAt = now;
     await writeJSON(`posts/${id}.json`, p);
