@@ -1,0 +1,40 @@
+name: Pretendard 글꼴 내려받기
+
+# 글꼴 파일(바이너리)을 저장소에 넣기 위한 1회용 작업이에요.
+# Pretendard는 SIL Open Font License 1.1로 상업적 이용·재배포가 허용돼요.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fonts.yml'
+      - 'scripts/build-fonts.mjs'
+
+permissions:
+  contents: write
+
+jobs:
+  fonts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Pretendard 1.3.9 내려받기
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/pt && cd /tmp/pt
+          npm pack pretendard@1.3.9
+          tar xzf pretendard-1.3.9.tgz
+          curl -fsSL https://raw.githubusercontent.com/orioncactus/pretendard/v1.3.9/LICENSE -o LICENSE.txt
+      - name: 필요한 굵기만 골라 fonts/pretendard 만들기
+        run: node scripts/build-fonts.mjs /tmp/pt/package /tmp/pt/LICENSE.txt
+      - name: 저장소에 반영
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add fonts
+          if git diff --cached --quiet; then echo "변경 없음"; exit 0; fi
+          git commit -m "Add self-hosted Pretendard 1.3.9 (SIL OFL 1.1)"
+          git push
