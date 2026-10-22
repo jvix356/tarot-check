@@ -127,6 +127,8 @@ a.navbtn{display:inline-block;font-weight:600;text-decoration:none;border-radius
 footer{border-top:1px solid var(--line);padding-top:16px;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
 footer p{margin:0}
 
+.ex-cards{display:flex;gap:10px;margin:8px 0}.ex-cards figure{margin:0;width:76px;text-align:center;font-size:12px;color:var(--muted)}.ex-cards svg{width:76px;height:auto;display:block}
+.role-pick{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 14px}.role-pick button[aria-pressed="true"]{outline:2px solid var(--accent)}
 .progress-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.progress-metric{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.progress-metric span{display:block;color:var(--muted);font-size:13px}.progress-metric strong{display:block;margin-top:5px;font-size:28px;color:var(--ink)}#improvementProgress progress{width:100%;height:22px;accent-color:var(--accent)}
 </style>
 <meta property="og:image" content="https://tarot-check.vercel.app/assets/share-card-v2.png">
@@ -168,6 +170,16 @@ footer p{margin:0}
   </details>
 
 
+  <section class="panel" aria-labelledby="role-h" id="rolePanel">
+    <h2 id="role-h" style="font-size:16px;margin:0 0 8px">어떤 분이세요? <small class="note">(선택)</small></h2>
+    <div class="role-pick" role="group" aria-labelledby="role-h">
+      <button type="button" class="ghost" data-role="general" aria-pressed="false">일반인 · 리딩을 받아 봤어요</button>
+      <button type="button" class="ghost" data-role="reader" aria-pressed="false">타로 리더예요</button>
+      <button type="button" class="ghost" data-role="self" aria-pressed="false">타로 독학 중이에요</button>
+    </div>
+    <p class="note" id="roleTip">고르면 유형에 맞는 안내를 보여 드려요. 유형별 숫자만 익명으로 세고, 이름·본문·IP는 보내지 않아요. 고르지 않아도 모든 기능을 쓸 수 있어요.</p>
+  </section>
+
   <nav class="tabs" role="tablist" aria-label="기능 선택">
     <button role="tab" id="tab-read" data-v="read" aria-selected="true" aria-controls="readView">리딩 판독</button>
     <button role="tab" id="tab-cmp" data-v="compare" aria-selected="false" aria-controls="cmpView">동일인 의심 비교</button>
@@ -177,9 +189,10 @@ footer p{margin:0}
   <section class="panel" aria-labelledby="in-h">
     <h2 id="in-h">받은 리딩 붙여넣기</h2><p class="note">입력 후 분석을 이용하면 본문 없이 최근 30일 이용 횟수만 익명 집계해요. 같은 탭은 30분 내 한 번만 세요.</p><label class="check"><input type="checkbox" id="usageOptOut"> 이용 횟수 집계하지 않기</label><details class="more"><summary>선택 참여 · 브라우저 수 집계</summary><label class="check"><input type="checkbox" id="browserCountOptIn"> (선택) 만 14세 이상이며, 이용 브라우저 수 집계에 동의해요. 임의의 브라우저 구분값만 30일 보관하며, 본문·이름·이메일·IP는 보내지 않아요. 동의하지 않아도 판독할 수 있어요. 해제하면 이후 집계를 중지해요. <a href="/privacy.html">처리방침</a></label></details>
     <label class="f" for="txt">상대가 보낸 리딩 <small>댓글·DM을 복사해서 그대로 붙여넣으세요. 여러 메시지는 문맥이 이어지도록 넣어 주세요. 이름·연락처 등은 먼저 지워 주세요.</small>
-      <textarea id="txt" spellcheck="false" placeholder="이름·연락처를 지운 리딩을 붙여넣으세요 (40자 이상)"></textarea>
+      <textarea id="txt" spellcheck="false" placeholder="이름·연락처를 지운 리딩을 붙여넣으세요 (40자 이상 · 짧은 메시지는 여러 개 이어 붙여도 돼요)"></textarea>
+      <details class="more" id="joinBox"><summary>짧은 메시지 여러 개 이어 붙이기</summary><p class="note">댓글·DM처럼 짧은 메시지는 하나씩 넣고 "이어 붙이기"를 누르면 위 칸에 줄을 바꿔 붙어요. 합쳐서 40자가 넘으면 문체도 볼 수 있어요. 같은 사람이 보낸 메시지만 붙여 주세요.</p><textarea id="joinPart" class="short" spellcheck="false" placeholder="메시지 하나를 붙여넣으세요"></textarea><div class="btns"><button type="button" class="ghost" id="joinAdd">이어 붙이기</button><span class="note" id="joinCount"></span></div></details>
     </label>
-    <p class="note" id="exNote"><span class="example-tag">예시</span> 지금 들어있는 글은 예시예요. 지우고 받은 리딩을 넣으면 바로 결과가 바뀌어요.</p>
+    <div id="exNote"><p class="note"><span class="example-tag">예시</span> 지금 들어있는 글은 예시예요. 지우고 받은 리딩을 넣으면 바로 결과가 바뀌어요.</p><div class="ex-cards" id="exCards" aria-label="예시 카드 도안"></div><p class="note">예시 카드: 과거 소드 3 · 현재 컵 6 · 미래 완드 8. <b>실제 타로카드 그림이 아니라 모양만 단순하게 그린 도안</b>이라 실제 카드와 다르게 보여요.</p></div>
     <details class="more">
       <summary>더 정확하게 보기 (선택)</summary>
       <div class="body">
@@ -260,6 +273,7 @@ footer p{margin:0}
 <script src="/stats.js"></script>
 <script src="/experience.js"></script>
 <script type="module" src="/progress.js"></script>
+<script type="module" src="/role.js"></script>
 <script type="module" src="/learn-view.js"></script>
 <script src="/deck-guide.js"></script>
 <script src="/deck-learn.js"></script>
@@ -267,5 +281,6 @@ footer p{margin:0}
 <script type="module" src="/reading-check.js"></script>
 <script src="/compare-plus.js"></script>
 <script src="/precheck.js"></script>
+<script src="/ctx-check.js"></script>
 </body>
 </html>

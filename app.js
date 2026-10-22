@@ -267,7 +267,7 @@ function optionalCardResult(text){
 function render(){
   const text = $("#txt").value.trim(), out = $("#out");
   if (text.length > 20000){out.innerHTML='<div class="empty">리딩은 20,000자 이내로 나눠 입력해 주세요.</div>';return;}
-  if (text.length < 40){window.__tcLast=null; out.innerHTML = '<div class="empty">문체 관찰은 리딩 40자 이상일 때 표시해요. 짧은 글로 작성 방식을 판단할 수는 없어요.</div>'+optionalCardResult(text); return; }
+  if (text.length < 40){window.__tcLast=null; out.innerHTML = '<div class="empty">문체 관찰은 리딩 40자 이상일 때 표시해요 (지금 '+text.length+'자). 짧은 메시지는 위 "짧은 메시지 여러 개 이어 붙이기"로 합쳐서 40자를 넘기면 돼요.</div>'+optionalCardResult(text); return; }
   const st = styleAnalyze(text);
   const {segs, cardSegs} = analyzeSpread(text);
   const [spreadName, spreadDesc] = guessSpreadName(cardSegs);
@@ -507,8 +507,10 @@ const EXAMPLE = `🔮 그 사람과 다시 연락이 될까요?
 
 💫 종합적으로 보면, 재회의 가능성은 열려 있어요. 기억하세요, 최종 선택은 당신에게 달려 있어요. 원하시면 상대방 속마음 리딩도 추가로 봐드릴게요 🌙`;
 const txt = $("#txt"); txt.value = ""; let isEx = false; $("#exNote").hidden=true;
-$("#showExample").onclick=()=>{txt.value=EXAMPLE;isEx=true;$("#exNote").hidden=false;render();};
+function showExCards(){const box=$("#exCards"),T=window.TarotCards;if(!box||!T||box.childElementCount)return;[["과거","소드 3"],["현재","컵 6"],["미래","완드 8"]].forEach(([pos,name])=>{const f=document.createElement("figure");f.innerHTML=T.svg(name);const c=document.createElement("figcaption");c.textContent=pos+" · "+name;f.appendChild(c);box.appendChild(f);});}
+$("#showExample").onclick=()=>{txt.value=EXAMPLE;isEx=true;showExCards();$("#exNote").hidden=false;render();};
 const r = debounce(render);
+{const jp=$("#joinPart"),ja=$("#joinAdd"),jc=$("#joinCount");if(jp&&ja){ja.onclick=()=>{const v=jp.value.trim();if(!v)return;if(isEx){txt.value="";isEx=false;$("#exNote").hidden=true;}txt.value=(txt.value.trim()?txt.value.trim()+"\n":"")+v;jp.value="";jc.textContent="합친 길이 "+txt.value.length+"자"+(txt.value.length<40?" · 40자까지 "+(40-txt.value.length)+"자 남았어요":" · 문체도 볼 수 있어요");render();};}}
 txt.addEventListener("input",()=>{ if(isEx){ isEx=false; $("#exNote").hidden=true; } r(); });
 ["#myq","#mins","#normal","#knownCards","#deckName"].forEach(s=>$(s).addEventListener("input", r));
 $$("#ctx input").forEach(c=>c.addEventListener("change", render));
