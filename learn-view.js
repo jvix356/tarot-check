@@ -1,3 +1,4 @@
+import { correctedSignals } from './teaching-model.js';
 /* 타로 리딩 판독기 · 참여 통계로 다듬는 표시
    - GitHub Actions가 매일 만드는 /data/stats.json(공개 합계)을 읽어 결과 화면 표시를 조정해요.
    - 일반 리더 글에서도 흔한 표현 → 표시를 낮추고 목록 아래로, 피해 응답에서 더 자주 보인 표현 → 주의 표시.
@@ -13,9 +14,8 @@
     pending = true;
     if (loading) return;
     loading = true;
-    fetch('/data/stats.json', { cache: 'no-cache' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (j) { data = j || { n: 0, signals: [] }; loading = false; if (pending) { pending = false; cb(); } })
+    Promise.all([fetch('/data/stats.json', { cache: 'no-cache' }).then(function(r){return r.ok?r.json():null;}), fetch('/api/teaching?scope=model').then(function(r){return r.ok?r.json():{adjustments:[]};}).catch(function(){return {adjustments:[]};})])
+      .then(function (results) { data = results[0] || { n: 0, signals: [] }; data.corrections = results[1].adjustments || []; loading = false; if (pending) { pending = false; cb(); } })
       .catch(function () { data = { n: 0, signals: [] }; loading = false; });
   }
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
@@ -24,14 +24,17 @@
   function apply() {
     var old = document.getElementById('learnNote'); if (old) old.remove();
     var map = {};
-    (data.signals || []).forEach(function (s) { map[norm(s.label)] = s; });
+    correctedSignals(data.signals,data.corrections).forEach(function(s){map[norm(s.label)]=s;});
     var adjusted = 0;
     var lists = out.querySelectorAll('ul.ev');
-    if (lists[0]) {
-      var ul = lists[0], moveDown = [];
+    Array.prototype.forEach.call(lists, function(ul) {
+      var moveDown = [];
       Array.prototype.forEach.call(ul.children, function (li) {
         var t = li.querySelector('p');
         var s = t && map[norm(t.firstChild ? t.firstChild.textContent : t.textContent)];
+        if (s && s.teaching) {
+          t.parentNode.appendChild(el('p','reason','공동 검토·운영자 반영 교정: '+(s.teaching.soften?'이 표현만으로 판단하지 않도록 학습 참고 가중치의 영향력을 절반으로 완화해요. ':'')+'앞뒤 문맥과 반례를 함께 확인해 주세요. AI 사용 여부를 확정하는 근거가 아니에요.'));
+        }
         if (!s || (s.tier !== 'common' && s.tier !== 'harm')) return;
         adjusted++;
         var pill = el('span', 'pill ' + (s.tier === 'harm' ? 'ai' : 'human'),
@@ -43,7 +46,7 @@
         if (s.tier === 'common') { li.style.opacity = '.7'; moveDown.push(li); }
       });
       moveDown.forEach(function (li) { ul.appendChild(li); });
-    }
+    });
     var box = el('section', 'panel'); box.id = 'learnNote';
     // 학습된 가중치로 본 참고 표시 (lib/learn.js의 lean과 같은 규칙)
     var labels = (window.__tcLast && window.__tcLast.signals) || [], sum = 0, used = 0;
@@ -62,6 +65,7 @@
     } else {
       p.appendChild(document.createTextNode('익명 통계가 쌓이면 매일 자동으로 학습해 표시 기준이 업데이트돼요. 결과 아래에서 참여할 수 있어요. '));
     }
+    var teachLink = el('a',null,'틀린 안내 가르치기 · 공동 검토 · 기여자 순위'); teachLink.href='/teach.html'; p.appendChild(teachLink); p.appendChild(document.createTextNode(' · '));
     var a = el('a', null, '통계 보기'); a.href = '/stats.html'; p.appendChild(a);
     box.appendChild(p);
     var first = out.querySelector('section');

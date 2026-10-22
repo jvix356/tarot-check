@@ -114,6 +114,7 @@
     $('#cPending').textContent = pend.length ? '(' + pend.length + ')' : '';
     $('#cReq').textContent = openReq.length ? '(' + openReq.length + ')' : '';
     var list;
+    if (view === 'teaching') return renderTeaching(v);
     if (view === 'stats') return renderStats(v);
     if (view === 'requests') {
       list = data.requests;
@@ -160,5 +161,24 @@
       });
   }
 
+  function renderTeaching(v) {
+    v.appendChild(el('p', {class:'note',text:'불러오는 중…'}));
+    fetch('/api/teaching?scope=admin',{headers:{Authorization:'Bearer '+pw}}).then(function(r){return r.json().then(function(j){j.ok=r.ok;return j;});}).then(function(r){
+      if(view !== 'teaching')return;
+      v.textContent='';
+      if(!r.ok)return v.appendChild(el('p',{text:r.message||'교정 제안을 불러오지 못했어요.'}));
+      v.appendChild(el('p',{class:'note',text:'원문 진위는 투표로 확인되지 않아요. 개인정보·저작권·문맥과 반례를 확인하고 공동 검토를 연 뒤 최종 반영하세요. 동의 3개 이상·전체 검토 2/3 이상은 최소 조건이며 정확도를 보장하지 않아요. 반영 취소 시 가르치기 안내와 점수에서도 빠져요.'}));
+      if(!r.proposals.length)v.appendChild(el('p',{text:'접수된 교정 제안이 없어요.'}));
+      r.proposals.forEach(function(p){
+        var status=el('p',{class:'msg',role:'status'}),answer=el('textarea',{'aria-label':'교정 검토 사유',maxlength:'500'});answer.value=p.answer||'';
+        function decide(state){status.textContent='저장 중…';fetch('/api/teaching',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+pw},body:JSON.stringify({action:'review',id:p.id,status:state,answer:answer.value})}).then(function(res){return res.json().then(function(j){j.ok=res.ok;return j;});}).then(function(j){if(j.ok)renderTeaching(v);else status.textContent=j.message||'처리하지 못했어요.';}).catch(function(){status.textContent='연결 오류';});}
+        var buttons=[];
+        if(p.status==='pending')buttons.push(el('button',{text:'공동 검토 시작',onclick:function(){decide('voting');}}));
+        if(p.status==='voting')buttons.push(el('button',{text:'교정 반영',onclick:function(){decide('accepted');}}));
+        if(p.status!=='rejected')buttons.push(el('button',{text:'보류·반려 / 반영 취소',onclick:function(){decide('rejected');}}));
+        v.appendChild(el('article',{class:'post'},[el('h3',{text:p.signal}),el('p',{text:'상태: '+p.status+' · 방향: '+p.kind}),el('p',{text:'예시: '+p.example}),el('p',{text:'설명: '+p.explanation}),el('p',{text:'동의 '+p.counts.agree+' · 반대 '+p.counts.disagree+' · 판단 어려움 '+p.counts.unsure+' · 최소 조건 '+(p.qualified?'충족':'미충족')}),answer,el('div',{class:'row'},buttons),status]));
+      });
+    }).catch(function(){v.textContent='교정 제안을 불러오지 못했어요.';});
+  }
   if (pw) load();
 })();
