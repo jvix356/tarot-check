@@ -76,7 +76,7 @@
         consent: true, outcome: o, signals: d.signals, flags: d.flags, cards: d.cards, len: d.len, spread: d.spread }) })
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (x) {
-          msg.textContent = x.ok ? (x.j.message || '보냈어요.') : (x.j.message || '보내지 못했어요.');
+          msg.textContent = x.ok ? '통계 참여 고마워요! 나눠 주신 정보는 판독 기준을 개선하고 잘못된 안내를 줄이는 데 참고할게요.' : (x.j.message || '보내지 못했어요.');
           if (x.ok) { sentKeys[key] = true; markSent(); } else btn.disabled = false;
         })
         .catch(function () { msg.textContent = '인터넷 연결을 확인해 주세요.'; btn.disabled = false; });
@@ -85,6 +85,7 @@
     var noteSlot = el('div');
     var p = el('section', { class: 'panel', id: 'statsPanel', 'aria-labelledby': 'stats-h' }, [
       el('h3', { id: 'stats-h', text: '익명 통계 참여 (선택)' }),
+      el('p', {class:'note', text:'통계로 함께해 주시는 모든 분께 감사드려요. 여러분의 참여는 판독 기준을 더 신중하게 다듬는 데 도움이 돼요.'}),
       el('p', { class: 'note', text: '평범하게 리딩하는 분들이 억울하게 의심받지 않도록, 어떤 표현이 일반 리더와 피해 사례에서 각각 얼마나 나오는지 모으고 있어요. 참여는 선택이에요.' }),
       el('details', { class: 'more' }, [el('summary', { text: '보내는 것과 보내지 않는 것' }), el('div', { class: 'body' }, [
         el('p', { class: 'note', text: '보내는 것: 위에서 찾은 표현 항목의 이름, 주의 표현 종류, 카드 칸 수, 글 길이 구간(300자 미만 등), 스프레드 이름, 아래에서 고른 결과.' }),
