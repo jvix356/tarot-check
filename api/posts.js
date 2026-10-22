@@ -8,6 +8,8 @@ import { authorKey, blockState } from '../lib/moderation.js';
 // 후기·피드백·댓글은 닉네임만으로 쓰고 바로 공개돼요. 제보는 이메일 인증 후 운영자 확인을 거쳐 공개돼요.
 const OPEN_TYPES = ['review', 'feedback', 'comment'];
 
+import { newOwnerToken, ownerHash, ownsPost, ownerView } from '../lib/ownership.js';
+
 const DAY = 864e5;
 
 export default async function handler(req, res) {
@@ -19,7 +21,7 @@ export default async function handler(req, res) {
         const mine = [];
         for (const id of (acc.posts || []).slice(-50).reverse()) {
           const p = await readJSON(`posts/${id}.json`);
-          if (p) mine.push({ id: p.id, type: p.type, title: p.title, body: p.body.slice(0, 120), status: p.status, progress: p.progress, createdAt: p.createdAt, rejectReason: p.rejectReason || '' });
+          if (p && p.authorId === acc.id) mine.push(ownerView(p));
         }
         return send(res, 200, { posts: mine });
       }
@@ -31,6 +33,15 @@ export default async function handler(req, res) {
     if (!sameOrigin(req)) return send(res, 403, { error: 'origin' });
     const acc = await currentAccount(req);
     const b = await readBody(req);
+    if (b.action === 'lookup') {
+      const mine = [];
+      for (const item of (Array.isArray(b.keys) ? b.keys : []).slice(0, 50)) {
+        if (!/^[a-z0-9]{10,40}$/.test(String(item.id || ''))) continue;
+        const p = await readJSON(`posts/${item.id}.json`);
+        if (p && ownsPost(p, acc, item.token)) mine.push(ownerView(p));
+      }
+      return send(res, 200, { posts: mine });
+    }
     const type = String(b.type || '');
     if (!TYPES[type]) return send(res, 400, { error: 'type' });
     if (!acc && !OPEN_TYPES.includes(type)) return send(res, 401, { error: 'login_required', message: '제보는 이메일 인증 후에 쓸 수 있어요.' });
@@ -74,8 +85,10 @@ export default async function handler(req, res) {
     // 특정인을 사기꾼으로 단정하는 표현 등 검토 표시가 있거나 제보면 운영자 확인 뒤 공개
     const review = type === 'report' || chk.flags.length > 0;
     const id = newId();
+    const ownerToken = acc ? null : newOwnerToken();
     const post = {
       id, type, parentId, title, body, privateNote: note,
+      ownerHash: ownerToken ? ownerHash(ownerToken) : null,
       nickname, authorId: acc ? acc.id : null, authorKey: key,
       status: review ? 'pending' : 'published', publishedAt: review ? null : new Date(now).toISOString(),
       progress: type === 'feedback' || type === 'report' ? '접수' : null,
@@ -89,7 +102,7 @@ export default async function handler(req, res) {
     const message = !review ? '바로 공개됐어요. 문제가 있는 글은 신고가 쌓이면 자동으로 숨겨져요.'
       : type === 'report' ? '접수됐어요. 제보는 운영자가 확인한 뒤 공개돼요.'
       : '특정인을 단정하는 표현(' + chk.flags.join(', ') + ')이 있어 운영자가 확인한 뒤 공개돼요.';
-    return send(res, 200, { ok: true, id, state: post.status, message });
+    return send(res, 200, { ok: true, id, ownerToken, state: post.status, message });
   } catch (e) {
     return send(res, e.status || 500, { error: 'server', message: '잠시 후 다시 시도해 주세요.' });
   }

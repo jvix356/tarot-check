@@ -89,8 +89,8 @@
     var msg = el('p', { class: 'msg', role: 'status' });
     var post = data.posts.filter(function (x) { return x.id === r.postId; })[0];
     var st = el('select', { 'aria-label': '처리 상태' }, ['접수', '검토 중', '처리 완료', '반려'].map(function (x) { var o = el('option', { text: x }); o.value = x; if (x === r.status) o.selected = true; return o; }));
-    var ans = el('textarea', { class: 'short', 'aria-label': '처리 메모', placeholder: '처리 내용 메모 (운영자용)' }); ans.value = r.answer || '';
-    var KIND = { report: '신고', delete: '삭제 요청', correct: '정정 요청' };
+    var ans = el('textarea', { class: 'short', 'aria-label': r.kind === 'appeal' ? '작성자에게 전달할 결정 사유' : '처리 메모', placeholder: r.kind === 'appeal' ? '작성자에게 전달할 결정 사유 (5자 이상)' : '처리 내용 메모 (운영자용)' }); ans.value = r.answer || '';
+    var KIND = { report: '신고', delete: '삭제 요청', correct: '정정 요청', appeal: '이의제기' };
     return el('article', { class: 'post' }, [
       el('div', { class: 'meta' }, [el('span', { class: 'pill bad', text: KIND[r.kind] }), el('span', { class: 'pill', text: r.status }), el('span', { text: fmt(r.createdAt) }), r.accountId ? el('span', { text: '로그인 계정 ' + r.accountId }) : el('span', { text: '비로그인' })]),
       el('p', { class: 'note', text: '대상 글: ' + (post ? (post.title || post.body.slice(0, 50)) + ' (' + (STATUS[post.status] || post.status) + ')' : '삭제된 글') }),
@@ -98,6 +98,11 @@
       r.contact ? el('div', { class: 'ops' }, ['연락처: ' + r.contact]) : null,
       el('div', { class: 'row' }, [st, el('button', { class: 'small', text: '저장', onclick: function () { act({ action: 'request_status', id: r.id, status: st.value, answer: ans.value }, msg); } }),
         post && post.status === 'published' ? el('button', { class: 'small', text: '대상 글 비공개', onclick: function () { act({ action: 'hide', id: post.id }, msg); } }) : null]),
+      r.kind === 'appeal' && post && ['접수', '검토 중'].indexOf(r.status) >= 0 ? el('div', { class: 'row' }, [
+        el('button', { class: 'small primary', text: '재검토 후 복원', onclick: function () { act({ action: 'appeal_decision', id: r.id, decision: 'restore', answer: ans.value }, msg); } }),
+        el('button', { class: 'small', text: '기존 조치 유지', onclick: function () { act({ action: 'appeal_decision', id: r.id, decision: 'uphold', answer: ans.value }, msg); } }),
+      ]) : null,
+      r.kind === 'appeal' && post ? el('details', null, [el('summary', { text: '대상 글·정정 도구 보기' }), postCard(post)]) : null,
       ans, msg,
     ]);
   }

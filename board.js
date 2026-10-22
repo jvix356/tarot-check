@@ -5,6 +5,14 @@
   var TYPE = { review: '후기', feedback: '피드백', report: '제보' };
   var KEY = 'tc_board_token';
   var token = ''; try { token = localStorage.getItem(KEY) || ''; } catch (e) {}
+  var ownerKeys = [];
+  try { ownerKeys = JSON.parse(localStorage.getItem('tc_post_keys') || '[]'); if (!Array.isArray(ownerKeys)) ownerKeys = []; } catch (e) {}
+  function remember(r) {
+    if (!r.ownerToken) return;
+    ownerKeys.push({ id: r.id, token: r.ownerToken }); ownerKeys = ownerKeys.slice(-50);
+    try { localStorage.setItem('tc_post_keys', JSON.stringify(ownerKeys)); } catch (e) {}
+    loadMine();
+  }
   var me = null, posts = [], filter = 'all';
 
   function el(tag, attrs, kids) {
@@ -40,8 +48,9 @@
     $('#writer').hidden = !!(me && !me.nickname);
     $('#anonRow').hidden = !!me;
     $('#meRow').hidden = !(me && me.nickname);
-    $('#mineBox').hidden = !(me && me.nickname);
-    if (me && me.nickname) { $('#meNick').textContent = me.nickname; $('#meEmail').textContent = '(인증: ' + me.email + ' · 운영자만 볼 수 있음)'; loadMine(); }
+    $('#mineBox').hidden = false;
+    loadMine();
+    if (me && me.nickname) { $('#meNick').textContent = me.nickname; $('#meEmail').textContent = '(인증: ' + me.email + ' · 운영자만 볼 수 있음)'; }
     render();
   }
   var cfg = { emailAuth: false };
@@ -106,23 +115,30 @@
       if (r.__status !== 200) return say($('#writeMsg'), r.message || '제출하지 못했어요.');
       say($('#writeMsg'), r.message, true);
       $('#wTitle').value = ''; $('#wBody').value = ''; $('#wNote').value = ''; $('#wAgree').checked = false;
+      remember(r);
       if (me) loadMine();
       if (r.state === 'published') loadList();
     });
   });
   var STATUS = { pending: ['검토 대기', 'wait'], published: ['공개됨', 'ok'], rejected: ['반려', 'bad'], hidden: ['비공개', 'bad'] };
   function loadMine() {
-    api('/api/posts?mine=1').then(function (r) {
+    var accountPosts = me ? api('/api/posts?mine=1') : Promise.resolve({ posts: [] });
+    Promise.all([accountPosts, api('/api/posts', { method: 'POST', body: { action: 'lookup', keys: ownerKeys } })]).then(function (results) {
+      var r = { posts: [] };
+      results.forEach(function (x) { (x.posts || []).forEach(function (p) { if (!r.posts.some(function (a) { return a.id === p.id; })) r.posts.push(p); }); });
       var box = $('#mine'); box.textContent = '';
       if (!r.posts || !r.posts.length) return box.appendChild(el('p', { class: 'note', text: '아직 쓴 글이 없어요.' }));
       r.posts.forEach(function (p) {
         var st = STATUS[p.status] || [p.status, ''];
-        box.appendChild(el('div', { class: 'post' }, [
+        var card = el('div', { class: 'post' }, [
           el('div', { class: 'meta' }, [el('span', { class: 'pill type', text: p.type === 'comment' ? '댓글' : TYPE[p.type] }), el('span', { class: 'pill ' + st[1], text: st[0] }), progressPill(p.progress), el('span', { text: fmt(p.createdAt) })]),
           p.title ? el('b', { text: p.title }) : null,
           el('p', { class: 'note', text: p.body }),
-          p.rejectReason ? el('p', { class: 'msg err', text: '반려 사유: ' + p.rejectReason }) : null,
-        ]));
+          p.rejectReason ? el('p', { class: 'msg err', text: '조치 사유: ' + p.rejectReason }) : null,
+          p.appeal ? el('p', { class: 'note', text: '이의제기: ' + p.appeal.status + (p.appeal.reason ? ' · 제출 사유: ' + p.appeal.reason : ' · 보유 기간이 지나 사유와 답변이 삭제됐어요.') + (p.appeal.answer ? ' · 운영자 답변: ' + p.appeal.answer : '') }) : null,
+        ]);
+        if (['hidden', 'rejected'].indexOf(p.status) >= 0 && !p.appeal) card.appendChild(requestForm(p, 'appeal', '이의제기'));
+        box.appendChild(card);
       });
     });
   }
@@ -137,14 +153,14 @@
 
   function requestForm(post, kind, label) {
     var reason = el('textarea', { class: 'short', maxlength: '1500', 'aria-label': label + ' 사유', placeholder: kind === 'correct' ? '어느 부분이 사실과 다른지, 어떻게 고쳐야 하는지 적어 주세요.' : kind === 'delete' ? '삭제가 필요한 이유를 적어 주세요. (예: 내 개인정보가 담겨 있어요)' : '신고 사유를 적어 주세요.' });
-    var contact = el('input', { type: 'text', maxlength: '200', placeholder: '답변 받을 연락처 (선택, 운영자만 봐요)', 'aria-label': '연락처' });
+    var contact = kind === 'appeal' ? null : el('input', { type: 'text', maxlength: '200', placeholder: '답변 받을 연락처 (선택, 운영자만 봐요)', 'aria-label': '연락처' });
     var msg = el('p', { class: 'msg', role: 'status' });
     var send = el('button', { class: 'primary small', text: label + ' 보내기', onclick: function () {
       send.disabled = true;
-      api('/api/requests', { method: 'POST', body: { kind: kind, postId: post.id, reason: reason.value, contact: contact.value } }).then(function (r) {
+      api('/api/requests', { method: 'POST', body: { kind: kind, postId: post.id, reason: reason.value, contact: contact ? contact.value : '', ownerToken: (ownerKeys.filter(function (k) { return k.id === post.id; })[0] || {}).token } }).then(function (r) {
         send.disabled = false;
         say(msg, r.message || (r.__status === 200 ? '접수됐어요.' : '보내지 못했어요.'), r.__status === 200);
-        if (r.__status === 200) { reason.value = ''; contact.value = ''; if (r.hidden) setTimeout(loadList, 1500); }
+        if (r.__status === 200) { reason.value = ''; if (contact) contact.value = ''; if (kind === 'appeal') loadMine(); if (r.hidden) setTimeout(loadList, 1500); }
       });
     } });
     return el('div', { class: 'inline-form' }, [reason, contact, el('div', { class: 'row' }, [send]), msg]);
@@ -159,7 +175,7 @@
       b.disabled = true;
       api('/api/posts', { method: 'POST', body: { type: 'comment', parentId: post.id, nickname: nick ? nick.value : undefined, body: t.value, agree: agree.checked } }).then(function (r) {
         b.disabled = false; say(msg, r.message || '제출하지 못했어요.', r.__status === 200);
-        if (r.__status === 200) { t.value = ''; agree.checked = false; if (me) loadMine(); if (r.state === 'published') loadList(); }
+        if (r.__status === 200) { remember(r); t.value = ''; agree.checked = false; if (me) loadMine(); if (r.state === 'published') loadList(); }
       });
     } });
     return el('div', { class: 'inline-form' }, [nick, t, el('label', { class: 'check' }, [agree, el('span', { text: '사실대로 썼고 개인정보·권리 침해 내용이 없어요.' })]), el('div', { class: 'row' }, [b]), msg]);
@@ -194,5 +210,17 @@
     });
   }
 
+  $('#restoreKey').addEventListener('click', function () {
+    var item = { id: $('#postId').value.trim(), token: $('#postKey').value.trim() };
+    api('/api/posts', { method: 'POST', body: { action: 'lookup', keys: [item] } }).then(function (r) {
+      if (!r.posts || !r.posts.length) return say($('#keyMsg'), '글과 확인키가 일치하지 않아요. 기존 비로그인 글은 확인키가 없어 자동 확인할 수 없어요.');
+      remember({ id: item.id, ownerToken: item.token }); $('#postKey').value = ''; say($('#keyMsg'), '작성한 글을 확인했어요.', true);
+    });
+  });
+  $('#showKeys').addEventListener('click', function () {
+    var box = $('#savedKeys'); box.hidden = !box.hidden;
+    box.textContent = box.hidden ? '' : ownerKeys.map(function (k) { return '글 ID: ' + k.id + '\n확인키: ' + k.token; }).join('\n\n') || '저장된 확인키가 없어요.';
+  });
+  $('#refreshMine').addEventListener('click', loadMine);
   boot();
 })();

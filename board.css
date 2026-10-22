@@ -78,3 +78,5 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 .grid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
 @media (max-width:640px){.grid2{grid-template-columns:minmax(0,1fr)}}
 footer{border-top:1px solid var(--line);padding-top:14px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+
+#savedKeys { white-space: pre-wrap; overflow-wrap: anywhere; }

@@ -18,6 +18,22 @@
     <a class="navlink" href="/">← 판독기로 돌아가기</a>
   </header>
 
+  <section class="panel" aria-labelledby="notice-h">
+    <h2 id="notice-h">공지사항</h2>
+    <article class="post">
+      <div class="meta"><span class="pill type">업데이트</span><time datetime="2026-10-22">2026.10.22</time><span>게시판 v2.1</span></div>
+      <h3>내 글 확인과 이의제기 기능을 추가했어요</h3>
+      <ul class="plain">
+        <li>숨김·반려된 글은 ‘내가 쓴 글’에서 사유를 확인하고 이의제기할 수 있어요. 글별 1회 접수하며 작성 제한 중에도 이용할 수 있어요.</li>
+        <li>운영자는 비공개로 재검토하고, 복원 또는 기존 조치 유지 사유를 작성자에게 알려요. 복원해도 개인정보·금지 표현 필터는 적용돼요.</li>
+        <li>인증 계정은 작성 계정으로, 새 비로그인 글·댓글은 글별 확인키로 작성자를 확인해요. 닉네임·IP만으로 작성자를 판단하지 않아요.</li>
+        <li>후기·피드백·댓글의 닉네임 작성, 제보의 이메일 소유 확인과 운영자 검토는 그대로 유지돼요.</li>
+        <li>리딩 분석은 브라우저에서 처리하며 AI 사용 확률이나 사람 작성 여부를 확정하지 않아요. 게시판에는 권리가 있는 내용만 제출해 주세요.</li>
+      </ul>
+      <p class="note">이의제기는 자동 복원이나 법적 판단을 의미하지 않아요. 기존 비로그인 글에는 확인키가 없어 자동으로 작성자를 확인할 수 없어요.</p>
+    </article>
+  </section>
+
   <section class="panel" aria-labelledby="rules-h">
     <h2 id="rules-h">이용 안내</h2>
     <ul class="plain">
@@ -94,11 +110,22 @@
       <label class="check"><input type="checkbox" id="wAgree"> <span>사실대로 썼고, 다른 사람의 개인정보·명예·저작권을 침해하는 내용이 없어요. 위 법적 책임 안내를 읽었고, 내가 쓴 글에 대한 책임은 나에게 있다는 것을 확인했어요.</span></label>
       <div class="row"><button class="primary" id="submit">제출하기</button></div>
       <p class="msg" id="writeMsg" role="status"></p>
-      <details class="more" id="mineBox">
-        <summary>내가 쓴 글 · 검토 상태</summary>
-        <div id="mine"><p class="note">불러오는 중…</p></div>
-      </details>
+
     </div>
+  </section>
+
+  <section class="panel" aria-labelledby="mine-h" id="mineBox">
+    <h2 id="mine-h">내가 쓴 글 · 이의제기</h2>
+    <p class="note">인증 계정으로 쓴 글과 이 브라우저에 확인키가 남아 있는 최근 비로그인 글·댓글을 보여요. 확인키는 작성 권한을 증명하므로 공유하지 마세요. 브라우저 데이터 삭제 전 별도로 보관해 주세요. 실명 확인 절차가 아니에요.</p>
+    <div class="row"><button id="refreshMine">상태 새로고침</button><button id="showKeys">내 글 확인키 보기·접기</button></div>
+    <pre id="savedKeys" class="body" hidden></pre>
+    <details><summary>다른 브라우저에서 확인키로 내 글 찾기</summary>
+      <label class="f">글 ID<input id="postId" maxlength="40" autocomplete="off"></label>
+      <label class="f">글 확인키<input id="postKey" type="password" maxlength="64" autocomplete="off"></label>
+      <button id="restoreKey">작성자 확인</button><p id="keyMsg" class="msg" role="status"></p>
+    </details>
+    <p class="note">이의제기에는 재검토가 필요한 이유만 적어 주세요. 개인정보·타인의 글·사진은 제출하지 마세요. 사유와 답변은 작성자와 운영자만 볼 수 있어요.</p>
+    <div id="mine"><p class="note">불러오는 중…</p></div>
   </section>
 
   <section class="panel" aria-labelledby="list-h">

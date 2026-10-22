@@ -1,8 +1,8 @@
 import { checkText } from '../lib/filter.js';
 import { readJSON, writeJSON, listPaths, remove } from '../lib/store.js';
-import { send, readBody, bearer, safeEqual, clip } from '../lib/util.js';
+import { send, readBody, bearer, safeEqual, clip, sameOrigin } from '../lib/util.js';
 import { allPosts, rebuildIndex, PROGRESS } from '../lib/board.js';
-import { addStrike, setBlock, blockState } from '../lib/moderation.js';
+import { clearPostStrike, addStrike, setBlock, blockState } from '../lib/moderation.js';
 
 function adminSecret() {
   return process.env.ADMIN_TOKEN || (process.env.STORE === 'memory' ? 'test-admin-token-1234' : '');
@@ -19,7 +19,13 @@ function isAdmin(req) {
 async function purgeExpired(now = Date.now()) {
   for (const k of await listPaths('requests/')) {
     const r = await readJSON(k);
-    if (r && ['처리 완료', '반려'].includes(r.status) && now - Date.parse(r.updatedAt || r.createdAt) > 365 * 864e5) await remove(k);
+    if (r && ['처리 완료', '반려'].includes(r.status) && now - Date.parse(r.updatedAt || r.createdAt) > 365 * 864e5) {
+      if (r.kind === 'appeal') {
+        const p = await readJSON(`posts/${r.postId}.json`);
+        if (p?.appeal?.id === r.id) { p.appeal = { id: r.id, status: r.status, createdAt: r.createdAt }; await writeJSON(`posts/${p.id}.json`, p); }
+      }
+      await remove(k);
+    }
   }
   for (const k of await listPaths('blocks/')) {
     const b = await readJSON(k);
@@ -51,6 +57,7 @@ export default async function handler(req, res) {
         p.block = key ? { key, blockedUntil: bl ? bl.until : null } : null;
         p.reportCount = (p.reporters || []).length;
         delete p.reporters;
+        delete p.ownerHash;
       }
       const requests = [];
       for (const k of await listPaths('requests/')) { const r = await readJSON(k); if (r) requests.push(r); }
@@ -59,16 +66,50 @@ export default async function handler(req, res) {
     }
 
     if (req.method !== 'POST') return send(res, 405, { error: 'method' });
+    if (!sameOrigin(req)) return send(res, 403, { error: 'origin' });
     const b = await readBody(req);
     const id = clip(b.id, 40);
 
     if (b.action === 'request_status') {
       const r = await readJSON(`requests/${id}.json`);
       if (!r) return send(res, 404, { error: 'not_found' });
+      if (r.kind === 'appeal') {
+        if (!['접수', '검토 중'].includes(b.status)) return send(res, 400, { error: 'use_appeal_decision', message: '복원 또는 유지 버튼으로 결정해 주세요.' });
+        const p = await readJSON(`posts/${r.postId}.json`);
+        if (!p || p.appeal?.id !== r.id || !['접수', '검토 중'].includes(p.appeal.status)) return send(res, 409, { error: 'closed' });
+        p.appeal.status = b.status;
+        await writeJSON(`posts/${p.id}.json`, p);
+      }
       r.status = ['접수', '검토 중', '처리 완료', '반려'].includes(b.status) ? b.status : r.status;
       r.answer = clip(b.answer ?? r.answer, 1000);
       r.updatedAt = new Date().toISOString();
       await writeJSON(`requests/${id}.json`, r);
+      return send(res, 200, { ok: true });
+    }
+
+    if (b.action === 'appeal_decision') {
+      const r = await readJSON(`requests/${id}.json`);
+      const p = r && await readJSON(`posts/${r.postId}.json`);
+      if (!r || r.kind !== 'appeal' || !p || p.appeal?.id !== id) return send(res, 404, { error: 'not_found' });
+      if (!['접수', '검토 중'].includes(p.appeal.status) || !['hidden', 'rejected'].includes(p.status)) return send(res, 409, { error: 'closed', message: '이미 처리됐거나 글 상태가 변경됐어요.' });
+      const answer = clip(b.answer, 1000);
+      if (answer.length < 5 || !['restore', 'uphold'].includes(b.decision)) return send(res, 400, { error: 'decision', message: '결정과 사유를 5자 이상 적어 주세요.' });
+      if (b.decision === 'restore') {
+        const blocked = checkText([p.title, p.body, p.nickname, p.reply?.body].filter(Boolean).join('\n')).blocked;
+        if (blocked.length) return send(res, 400, { error: 'filtered', message: '개인정보·금지 표현을 정정한 뒤 복원해 주세요.' });
+        if (p.parentId) {
+          const parent = await readJSON(`posts/${p.parentId}.json`);
+          if (!parent || parent.status !== 'published') return send(res, 409, { error: 'parent', message: '원글을 먼저 복원해 주세요.' });
+        }
+        p.status = 'published'; p.publishedAt = new Date().toISOString(); p.reporters = []; p.hiddenBy = null; p.rejectReason = '';
+        await clearPostStrike(p.authorKey || (p.authorId ? 'acc-' + p.authorId : ''), p.id);
+      }
+      r.status = b.decision === 'restore' ? '처리 완료' : '반려'; r.answer = answer; r.updatedAt = new Date().toISOString();
+      p.appeal = { ...p.appeal, status: r.status, answer, decision: b.decision, updatedAt: r.updatedAt };
+      p.history = [...(p.history || []), { at: r.updatedAt, what: b.decision === 'restore' ? '이의제기 재검토 후 복원' : '이의제기 재검토 후 기존 조치 유지' }].slice(-30);
+      await writeJSON(`posts/${p.id}.json`, p);
+      await writeJSON(`requests/${id}.json`, r);
+      await rebuildIndex();
       return send(res, 200, { ok: true });
     }
 
@@ -89,15 +130,16 @@ export default async function handler(req, res) {
 
     const p = await readJSON(`posts/${id}.json`);
     if (!p) return send(res, 404, { error: 'not_found' });
+    if (b.action === 'publish' && p.appeal && ['접수', '검토 중'].includes(p.appeal.status)) return send(res, 409, { error: 'appeal_open', message: '요청 목록의 이의제기에서 재검토 후 복원해 주세요.' });
     const now = new Date().toISOString();
     const log = (what) => { p.history = [...(p.history || []), { at: now, what }].slice(-30); };
 
     switch (b.action) {
       case 'publish': p.status = 'published'; p.publishedAt = now; if (p.hiddenBy === 'reports') { p.reporters = []; p.hiddenBy = null; } log('공개'); break;
       case 'reject': p.status = 'rejected'; p.rejectReason = clip(b.reason, 300); log('반려');
-        if (b.strike !== false) await addStrike(p.authorKey || (p.authorId ? 'acc-' + p.authorId : ''), '운영자 반려');
+        if (b.strike !== false) await addStrike(p.authorKey || (p.authorId ? 'acc-' + p.authorId : ''), '운영자 반려', p.id);
         break;
-      case 'hide': p.status = 'hidden'; log('비공개 전환'); break;
+      case 'hide': p.rejectReason = clip(b.reason, 300) || '운영자 검토를 위해 비공개로 전환했어요.'; p.status = 'hidden'; log('비공개 전환'); break;
       case 'delete':
         await remove(`posts/${id}.json`);
         if (p.type !== 'comment') for (const k of await listPaths('posts/')) { const c = await readJSON(k); if (c && c.parentId === id) await remove(k); }
@@ -121,7 +163,7 @@ export default async function handler(req, res) {
     p.updatedAt = now;
     await writeJSON(`posts/${id}.json`, p);
     await rebuildIndex();
-    return send(res, 200, { ok: true, post: p });
+    return send(res, 200, { ok: true });
   } catch (e) {
     return send(res, e.status || 500, { error: 'server', message: String(e.message || e) });
   }

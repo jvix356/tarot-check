@@ -5,7 +5,9 @@ import { currentAccount } from '../lib/accounts.js';
 import { authorKey, addReporter, addStrike, HIDE_AFTER } from '../lib/moderation.js';
 import { rebuildIndex } from '../lib/board.js';
 
-const KINDS = { report: '신고', delete: '삭제 요청', correct: '정정 요청' };
+import { ownsPost } from '../lib/ownership.js';
+
+const KINDS = { appeal: '이의제기', report: '신고', delete: '삭제 요청', correct: '정정 요청' };
 const DAY = 864e5;
 
 // 공개된 글에 대한 신고·삭제·정정 요청. 글에 언급된 당사자도 쓸 수 있게 로그인 없이 받아요.
@@ -18,9 +20,12 @@ export default async function handler(req, res) {
     if (!KINDS[kind]) return send(res, 400, { error: 'kind' });
     const postId = clip(b.postId, 40);
     const post = await readJSON(`posts/${postId}.json`);
-    if (!post || post.status !== 'published') return send(res, 404, { error: 'post', message: '요청할 글을 찾지 못했어요.' });
+    const acc = await currentAccount(req).catch(() => null);
+    if (kind === 'appeal' && (!post || !ownsPost(post, acc, b.ownerToken))) return send(res, 403, { error: 'owner', message: '작성 계정 또는 글 확인키가 필요해요.' });
+    if (!post || (kind === 'appeal' ? !['hidden', 'rejected'].includes(post.status) : post.status !== 'published')) return send(res, 404, { error: 'post', message: '요청할 글을 찾지 못했어요.' });
+    if (kind === 'appeal' && post.appeal) return send(res, 409, { error: 'duplicate', message: '이미 이의제기를 보냈어요. 내 글에서 처리 상태를 확인해 주세요.' });
     const reason = clip(b.reason, 1500);
-    const contact = clip(b.contact, 200);
+    const contact = kind === 'appeal' ? '' : clip(b.contact, 200);
     if (reason.length < 5) return send(res, 400, { error: 'reason', message: '사유를 5자 이상 적어 주세요.' });
     const bad = checkPrivate(reason + '\n' + contact);
     if (bad.length) return send(res, 400, { error: 'filtered', message: `쓸 수 없는 표현이 있어요: ${bad.join(', ')}` });
@@ -32,13 +37,18 @@ export default async function handler(req, res) {
     if (rl.t.length >= 10) return send(res, 429, { error: 'rate', message: '오늘 보낼 수 있는 요청 수를 넘었어요.' });
     rl.t.push(now); await writeJSON(ipKey, rl);
 
-    const acc = await currentAccount(req).catch(() => null);
     const reporterKey = authorKey(req, acc);
-    const id = newId();
+    const id = kind === 'appeal' ? 'appeal-' + postId : newId();
     await writeJSON(`requests/${id}.json`, {
       id, kind, postId, reason, contact, accountId: acc ? acc.id : null, reporterKey,
       status: '접수', createdAt: new Date(now).toISOString(), answer: '',
     });
+
+    if (kind === 'appeal') {
+      post.appeal = { id, status: '접수', reason, answer: '', createdAt: new Date(now).toISOString() };
+      post.history = [...(post.history || []), { at: new Date(now).toISOString(), what: '작성자 이의제기 접수' }].slice(-30);
+      await writeJSON(`posts/${postId}.json`, post);
+    }
 
     // 서로 다른 신고자 3명이 신고하면 운영자 확인 전까지 자동으로 숨겨요(작성자 본인 신고는 세지 않아요)
     let hidden = false;
@@ -47,7 +57,7 @@ export default async function handler(req, res) {
         post.status = 'hidden'; post.hiddenBy = 'reports';
         post.history = [...(post.history || []), { at: new Date(now).toISOString(), what: `신고 ${HIDE_AFTER}명 누적으로 자동 숨김` }].slice(-30);
         hidden = true;
-        await addStrike(post.authorKey || (post.authorId ? 'acc-' + post.authorId : ''), '신고 누적 자동 숨김');
+        await addStrike(post.authorKey || (post.authorId ? 'acc-' + post.authorId : ''), '신고 누적 자동 숨김', post.id);
       }
       await writeJSON(`posts/${postId}.json`, post);
       if (hidden) await rebuildIndex();
