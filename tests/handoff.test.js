@@ -31,7 +31,7 @@ test('write → private note → moderation → public API, and admin cannot byp
  await writeJSON('accounts/u.json',{id:'u',nickname:'독자',sessionVersion:1,posts:[]});
  const token=signToken({uid:'u',sv:1});
  const draft={type:'report',title:'결제 유도 수법',body:'추가 결제를 요구하는 수법을 경험했어요.',privateNote:'@reader https://example.com',agree:true};
- assert.equal((await call(posts,'POST',{...draft,body:'@reader 계정을 제보합니다.'},token)).status,400);
+ const m=await call(posts,'POST',{...draft,body:'@reader 계정을 제보합니다.'},token);assert.equal(m.status,200);assert.ok(m.masked.includes('계정'));
  const made=await call(posts,'POST',draft,token);assert.equal(made.status,200);
  assert.equal((await call(admin,'POST',{action:'publish',id:made.id})).status,200);
  const list=await call(posts,'GET',null,token);assert.equal(list.posts.length,0);assert.equal((await readJSON(`posts/${made.id}.json`)).status,'private');assert.ok(!JSON.stringify(list).includes('@reader'));

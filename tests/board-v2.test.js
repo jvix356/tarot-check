@@ -8,7 +8,10 @@ const { default: admin } = await import('../api/admin.js');
 const { readJSON, writeJSON } = await import('../lib/store.js');
 const { signToken } = await import('../lib/util.js');
 
-async function call(handler, method, body, { ip = '1.1.1.1', token = '' } = {}) {
+async function call(handler, method, body, { ip, token = '' } = {}) {
+  // 닉네임 고정 규칙 때문에 테스트에서는 닉네임마다 다른 사람(접속)으로 가정해요
+  ip = ip || (body && body.nickname ? 'nick:' + body.nickname : '1.1.1.1');
+  if (body && body.nickname && !String(ip).startsWith('nick:')) body = { ...body, nickname: String(body.nickname).slice(0, 8) + String(ip).replace(/\D/g, '').slice(-4) }; // 접속마다 다른 사람으로 가정
   const headers = { host: 'test.local', 'x-forwarded-for': ip };
   if (token) headers.authorization = 'Bearer ' + token;
   const req = { method, body, headers, query: {}, url: '/' };

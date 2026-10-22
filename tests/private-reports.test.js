@@ -24,7 +24,7 @@ test('report is admin-only through submission, review and appeal restoration; ac
  await writeJSON('accounts/private-user.json',{id:'private-user',nickname:'제보독자',sessionVersion:1,posts:[]});
  const token=signToken({uid:'private-user',sv:1});
  const p=await call(posts,'POST',{type:'report',title:'운영자에게 전달',body:'추가 결제 요청을 경험했어요.',agree:true},token);
- assert.equal(p.status,200);assert.ok(p.message.includes('공개 게시판에는 나오지'));
+ assert.equal(p.status,200);assert.ok(p.message.includes('공개되지 않아요'));
  assert.equal((await adm({action:'publish',id:p.id})).status,200);
  assert.equal((await readJSON(`posts/${p.id}.json`)).status,'private');
  const mine=await call(posts,'GET',null,token,true);assert.equal(mine.posts[0].id,p.id);

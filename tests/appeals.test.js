@@ -9,7 +9,9 @@ const {readJSON, writeJSON} = await import('../lib/store.js');
 const {signToken} = await import('../lib/util.js');
 const {addStrike, blockState, setBlock} = await import('../lib/moderation.js');
 let n = 0;
-async function call(fn, body, {method='POST', token='', ip='10.0.' + (++n) + '.1', origin='https://test.local', mine=false}={}) {
+async function call(fn, body, {method='POST', token='', ip, origin='https://test.local', mine=false}={}) {
+  ip = ip || (body && body.nickname ? 'nick:' + body.nickname : '10.0.' + (++n) + '.1');
+  if (body && body.nickname && !String(ip).startsWith('nick:')) body = { ...body, nickname: String(body.nickname).slice(0, 8) + String(ip).replace(/\D/g, '').slice(-4) }; // 접속마다 다른 사람으로 가정
   const req = {method, body, headers:{host:'test.local', origin, 'x-forwarded-for':ip, authorization:'Bearer '+token}, query:mine?{mine:1}:{}, url:mine?'/?mine=1':'/'};
   const res = {setHeader(){}, end(x){this.data=JSON.parse(x);}};
   await fn(req,res); return {status:res.statusCode,...res.data};
