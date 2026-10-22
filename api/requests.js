@@ -58,6 +58,7 @@ export default async function handler(req, res) {
         post.history = [...(post.history || []), { at: new Date(now).toISOString(), what: `신고 ${HIDE_AFTER}명 누적으로 자동 숨김` }].slice(-30);
         hidden = true;
         await addStrike(post.authorKey || (post.authorId ? 'acc-' + post.authorId : ''), '신고 누적 자동 숨김', post.id);
+        if (post.devKey) await addStrike(post.devKey, '신고 누적 자동 숨김', post.id);
       }
       await writeJSON(`posts/${postId}.json`, post);
       if (hidden) await rebuildIndex();

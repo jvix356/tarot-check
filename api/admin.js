@@ -1,5 +1,6 @@
 import { checkText } from '../lib/filter.js';
 import { readJSON, writeJSON, listPaths, remove } from '../lib/store.js';
+import { purgeReportNotes } from '../lib/retention.js';
 import { send, readBody, bearer, safeEqual, clip, sameOrigin } from '../lib/util.js';
 import { allPosts, rebuildIndex, PROGRESS } from '../lib/board.js';
 import { clearPostStrike, addStrike, setBlock, blockState } from '../lib/moderation.js';
@@ -17,6 +18,7 @@ function isAdmin(req) {
 // - 작성 제한 기록: 제한이 끝났고 마지막 위반이 180일 지난 것
 // - 인증 코드·요청 횟수 기록: 하루 지난 것
 async function purgeExpired(now = Date.now()) {
+  await purgeReportNotes(now);
   for (const k of await listPaths('requests/')) {
     const r = await readJSON(k);
     if (r && ['처리 완료', '반려'].includes(r.status) && now - Date.parse(r.updatedAt || r.createdAt) > 365 * 864e5) {
@@ -138,6 +140,7 @@ export default async function handler(req, res) {
       case 'publish': p.status = p.type === 'report' ? 'private' : 'published'; p.publishedAt = now; if (p.hiddenBy === 'reports') { p.reporters = []; p.hiddenBy = null; } log('공개'); break;
       case 'reject': p.status = 'rejected'; p.rejectReason = clip(b.reason, 300); log('반려');
         if (b.strike !== false) await addStrike(p.authorKey || (p.authorId ? 'acc-' + p.authorId : ''), '운영자 반려', p.id);
+        if (b.strike !== false && p.devKey) await addStrike(p.devKey, '운영자 반려', p.id);
         break;
       case 'hide': p.rejectReason = clip(b.reason, 300) || '운영자 검토를 위해 비공개로 전환했어요.'; p.status = 'hidden'; log('비공개 전환'); break;
       case 'delete':
