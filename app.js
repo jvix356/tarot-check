@@ -258,7 +258,7 @@ function optionalCardResult(text){
   const q=$("#myq").value.trim();
   const flow=cards.length?cards.map((c,i)=>String(i+1)+"번째 "+c.name+": "+(/역방향$/.test(named[i].card)?c.rv:c.up).slice(0,2).join("·")).join(" → "):"";
   return '<section class="panel" aria-labelledby="card-result-heading"><h2 id="card-result-heading">카드 해석 · 후보 (선택)</h2><p class="caveat">문체 관찰과 별개의 키워드 참고 결과예요. 실제 사용 카드·배열·덱·AI 사용 여부를 확인한 것은 아니에요.</p>'+
-    (deck?'<p class="note">입력한 덱: '+esc(deck)+'. 이 덱의 그림은 등록되지 않아 '+(show?'사이트 기본 도안으로':'텍스트로')+' 표시해요. 덱 이름만으로 사용 카드를 알 수는 없어요.</p>':'<p class="note">그림은 사이트의 기본 도안·AI 생성 일러스트이며, 상담자가 사용한 덱의 그림이 아니에요.</p>')+
+    (deck?'<p class="note">입력한 덱: '+esc(deck)+'. 덱 그림 대신 '+(show?'저작권 걱정 없는 단순한 그림으로':'글자로')+' 어떤 카드인지 보여드려요. 덱 이름만으로 실제 뽑은 카드를 알 수는 없어요.</p>':'<p class="note">그림은 사이트의 기본 도안·AI 생성 일러스트이며, 상담자가 사용한 덱의 그림이 아니에요.</p>')+
     (unknown.length?'<p class="note">인식하지 못한 입력: '+esc(unknown.join(" / "))+' — 카드명을 확인해 주세요.</p>':'')+
     (slots.length?'<div class="spread">'+slots.map(x=>'<div class="slot '+(x.guess?'guess':'')+'"><span class="pos">'+esc(x.pos)+'</span>'+(show?cardImg(x):'')+'<p class="card">'+esc(x.card)+'</p><span class="pill mid">'+(x.guess?'키워드상 관련 후보':explicit?'입력한 카드명':'본문에 적힌 카드명')+'</span><p class="why">'+esc(x.why)+'</p></div>').join('')+'</div>':'<p class="note">카드명을 추가로 입력해 주세요.</p>')+
     (flow?'<h3>입력·본문 카드의 순서 연결</h3>'+(q?'<p class="note">질문: '+esc(q)+'</p>':'')+'<p>'+esc(flow)+'</p><p class="note">위 흐름은 카드의 대표 키워드를 입력 순서로 연결한 참고예요. 질문의 실제 상황이나 미래를 확인한 해석은 아니에요. 관련 후보만으로는 조합 해석을 만들지 않아요.</p>':'')+'</section>';
