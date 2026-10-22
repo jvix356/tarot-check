@@ -171,12 +171,52 @@ import { pageWindow } from './board-pagination.js';
     return el('div', { class: 'inline-form' }, [reason, contact, el('div', { class: 'row' }, [send]), msg]);
   }
 
-  function commentForm(post) {
-    var t = el('textarea', { class: 'short', maxlength: '500', 'aria-label': '댓글', placeholder: '댓글은 바로 공개돼요. 특정인을 단정하는 표현이 있으면 운영자 확인 뒤 공개돼요.' });
+  /* ---------- 공감·조회수 ---------- */
+  var EMO = [['heart', '❤️', '좋아요'], ['empathy', '🤝', '공감'], ['helpful', '💡', '도움돼요'], ['cheer', '👏', '응원해요']];
+  var metaCache = {}, bars = {}, viewed = {};
+  function paintBar(id) {
+    var m = metaCache[id] || { r: {}, v: 0, mine: [] };
+    (bars[id] || []).forEach(function (bar) {
+      Array.prototype.forEach.call(bar.querySelectorAll('button'), function (b) {
+        var k = b.getAttribute('data-e'), e = EMO.filter(function (x) { return x[0] === k; })[0];
+        b.textContent = e[1] + ' ' + (m.r[k] || 0); b.setAttribute('aria-pressed', String(m.mine.indexOf(k) >= 0));
+      });
+    });
+    Array.prototype.forEach.call(document.querySelectorAll('[data-views="' + id + '"]'), function (n) { n.textContent = '조회 ' + (m.v || 0); });
+  }
+  function reactBar(id) {
+    var bar = el('div', { class: 'react-bar', role: 'group', 'aria-label': '공감 표시' });
+    EMO.forEach(function (e) {
+      bar.appendChild(el('button', { class: 'small', 'data-e': e[0], title: e[2], 'aria-label': e[2], 'aria-pressed': 'false', text: e[1] + ' 0', onclick: function () {
+        api('/api/posts', { method: 'POST', body: { action: 'react', id: id, emoji: e[0], dev: dev || undefined } }).then(function (r) {
+          if (r.__status !== 200) { if (r.message) alertMsg(bar, r.message); return; }
+          metaCache[id] = metaCache[id] || { r: {}, v: 0, mine: [] }; metaCache[id].r = r.r; metaCache[id].mine = r.mine; paintBar(id);
+        });
+      } }));
+    });
+    (bars[id] = bars[id] || []).push(bar); paintBar(id);
+    return bar;
+  }
+  function alertMsg(node, text) { var m = el('span', { class: 'note', text: ' ' + text }); node.appendChild(m); setTimeout(function () { m.remove(); }, 4000); }
+  function loadMeta(ids) {
+    ids = ids.filter(function (x) { return x; }); if (!ids.length) return;
+    api('/api/posts', { method: 'POST', body: { action: 'meta', ids: ids, dev: dev || undefined } }).then(function (r) {
+      if (r.__status !== 200 || !r.meta) return; Object.keys(r.meta).forEach(function (id) { metaCache[id] = r.meta[id]; paintBar(id); });
+    });
+  }
+  function countView(id) {
+    if (viewed[id]) return; viewed[id] = true;
+    api('/api/posts', { method: 'POST', body: { action: 'view', id: id, dev: dev || undefined } }).then(function (r) {
+      if (r.__status === 200) { metaCache[id] = metaCache[id] || { r: {}, v: 0, mine: [] }; metaCache[id].v = r.v; paintBar(id); }
+    });
+  }
+
+  function commentForm(post, label) {
+    var t = el('textarea', { class: 'short', maxlength: '500', 'aria-label': '댓글', placeholder: (label || '댓글') + '은 바로 공개돼요. 특정인을 단정하는 표현이 있으면 운영자 확인 뒤 공개돼요.' });
     var nick = me ? null : el('input', { type: 'text', maxlength: '12', placeholder: '닉네임 (2~12자)', 'aria-label': '댓글 닉네임' });
     var agree = el('input', { type: 'checkbox' });
     var msg = el('p', { class: 'msg', role: 'status' });
-    var b = el('button', { class: 'primary small', text: '댓글 제출', onclick: function () {
+    var b = el('button', { class: 'primary small', text: (label || '댓글') + ' 제출', onclick: function () {
       b.disabled = true;
       api('/api/posts', { method: 'POST', body: { dev: dev || undefined, type: 'comment', parentId: post.id, nickname: nick ? nick.value : undefined, body: t.value, agree: agree.checked } }).then(function (r) {
         b.disabled = false; say(msg, r.message || '제출하지 못했어요.', r.__status === 200);
@@ -195,6 +235,8 @@ import { pageWindow } from './board-pagination.js';
     $('#listCount').textContent='총 '+list.length+'건 · '+page+' / '+state.totalPages+'페이지 · 한 페이지 5개';
     pager($('#listPages'),state,function(n){page=n;render();$('#list-h').scrollIntoView({block:'start'});});
     if (!list.length) return box.appendChild(el('div', { class: 'empty', text: '아직 공개된 글이 없어요.' }));
+    bars = {};
+    loadMeta(visibleIds(list.slice(state.start,state.end)));
     list.slice(state.start,state.end).forEach(function (p) {
       var slot = el('div');
       var toggle = function (make) { return function () { var open = slot.firstChild && slot.firstChild.__k === make; slot.textContent = ''; if (!open) { var f = make(); f.__k = make; slot.appendChild(f); } }; };
@@ -205,8 +247,21 @@ import { pageWindow } from './board-pagination.js';
         el('h3', { text: p.title }),
         el('p', { class: 'body', text: p.body }),
         p.reply ? el('div', { class: 'reply' }, [el('b', { text: '운영자 답변 · ' + fmt(p.reply.at) }), p.reply.body]) : null,
+        el('div', { class: 'post-stats' }, [reactBar(p.id), el('span', { class: 'note', 'data-views': p.id, text: '조회 0' })]),
         (p.comments && p.comments.length) ? el('div', { class: 'comments' }, p.comments.map(function (c) {
-          return el('p', { class: 'comment' }, [el('span', { class: 'who', text: c.nickname }), c.body, c.reply ? el('span', { class: 'note', text: '  — 운영자: ' + c.reply.body }) : null]);
+          var rslot = el('div');
+          var rToggle = function () { var open = rslot.firstChild; rslot.textContent = ''; if (!open) rslot.appendChild(commentForm(c, '답글')); };
+          return el('div', { class: 'comment-wrap' }, [
+            el('p', { class: 'comment' }, [el('span', { class: 'who', text: c.nickname }), el('span', { class: 'note', text: fmt(c.createdAt) + ' ' }), c.body, c.reply ? el('span', { class: 'note', text: '  — 운영자: ' + c.reply.body }) : null]),
+            el('div', { class: 'comment-tools' }, [reactBar(c.id), el('button', { class: 'small', text: '↳ 답글', onclick: rToggle })]),
+            (c.replies && c.replies.length) ? el('div', { class: 'replies-nested' }, c.replies.map(function (r) {
+              return el('div', { class: 'comment-wrap nested' }, [
+                el('p', { class: 'comment' }, [el('span', { class: 'who', text: '↳ ' + r.nickname }), el('span', { class: 'note', text: fmt(r.createdAt) + ' ' }), r.body]),
+                el('div', { class: 'comment-tools' }, [reactBar(r.id)]),
+              ]);
+            })) : null,
+            rslot,
+          ]);
         })) : null,
         el('div', { class: 'actions' }, [
           el('button', { class: 'small', text: '댓글', onclick: toggle(mkC) }),
@@ -216,11 +271,12 @@ import { pageWindow } from './board-pagination.js';
         ]),
         slot,
       ]);
-      var details=el('details',{class:'board-entry'}),summary=el('summary',null,[el('span',{class:'pill type',text:TYPE[p.type]}),el('span',{class:'entry-title',text:p.title}),el('span',{class:'note',text:p.nickname+' · '+fmt(p.createdAt)+' · 댓글 '+(p.comments||[]).length})]);
-      details.append(summary,card);details.open=openPosts.has(p.id);details.addEventListener('toggle',function(){if(details.open)openPosts.add(p.id);else openPosts.delete(p.id);});box.appendChild(details);
+      var nComments=(p.comments||[]).reduce(function(n,c){return n+1+(c.replies||[]).length;},0);var details=el('details',{class:'board-entry'}),summary=el('summary',null,[el('span',{class:'pill type',text:TYPE[p.type]}),el('span',{class:'entry-title',text:p.title}),el('span',{class:'note',text:p.nickname+' · '+fmt(p.createdAt)+' · 댓글 '+nComments+' · '}),el('span',{class:'note','data-views':p.id,text:'조회 0'})]);
+      details.append(summary,card);details.open=openPosts.has(p.id);details.addEventListener('toggle',function(){if(details.open){openPosts.add(p.id);countView(p.id);}else openPosts.delete(p.id);});box.appendChild(details);
     });
   }
 
+  function visibleIds(list){var ids=[];list.forEach(function(p){ids.push(p.id);(p.comments||[]).forEach(function(c){ids.push(c.id);(c.replies||[]).forEach(function(r){ids.push(r.id);});});});return ids;}
   function pager(node,state,change){
     node.textContent='';
     if(state.totalPages<=1)return;

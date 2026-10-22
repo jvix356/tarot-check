@@ -84,3 +84,12 @@ footer{border-top:1px solid var(--line);padding-top:14px;font-size:13px;color:va
 .progress-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.progress-metric{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.progress-metric span{display:block;color:var(--muted);font-size:13px}.progress-metric strong{display:block;margin-top:5px;font-size:28px;color:var(--ink)}#improvementProgress progress{width:100%;height:22px;accent-color:var(--accent)}
 
 .board-entry{border-bottom:1px solid var(--line);overflow-wrap:anywhere}.board-entry>summary{cursor:pointer;padding:14px 8px;font-weight:600}.board-entry>summary .pill{margin-right:8px}.board-entry>summary .note{display:block;margin:4px 0 0 20px;font-weight:400}.board-entry[open]>summary{background:var(--accent-soft);border-radius:6px}.board-entry>.post{margin:8px 0 14px}.pagination{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px}.pagination button[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
+
+.post-stats{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.react-bar{display:flex;flex-wrap:wrap;gap:4px}
+.react-bar button{border-radius:999px;padding:2px 10px;font-size:13px}
+.react-bar button[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);font-weight:600}
+.comment-wrap{display:flex;flex-direction:column;gap:4px;padding:6px 0;border-bottom:1px dotted var(--line)}
+.comment-tools{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.replies-nested{margin-left:18px;padding-left:10px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:2px}
+.comment-wrap.nested{border-bottom:0}
