@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>판독기 참여 통계</title>
+<meta name="description" content="타로 리딩 판독기 익명 통계. 이용자가 동의하고 보낸 항목 이름·개수만 합산해 매일 자동으로 업데이트해요.">
+<link rel="stylesheet" href="/fonts/pretendard/pretendard.css?v=1.3.9">
+<link rel="stylesheet" href="board.css">
+<style>.tablewrap{overflow-x:auto}table.sig{width:100%;border-collapse:collapse;font-size:14px}table.sig th,table.sig td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}table.sig th{font-size:13px;color:var(--muted);font-weight:600}table.sig td.n,table.sig th{white-space:nowrap}table.sig td:first-child{min-width:9em}</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>참여 통계</h1>
+      <p class="sub">익명 통계 참여가 쌓일수록 매일 자동으로 학습해 판독 기준을 다듬어요.</p>
+    </div>
+    <a class="navlink" href="/">← 판독기로 돌아가기</a>
+  </header>
+
+  <section class="panel" aria-labelledby="sum-h">
+    <h2 id="sum-h">요약</h2>
+    <p id="summary" class="note">불러오는 중…</p>
+  </section>
+
+  <section class="panel" aria-labelledby="tbl-h">
+    <h2 id="tbl-h">표현별 통계</h2>
+    <p class="note">각 표현이 "일반 리더였어요"라고 답한 글과 "돈·피해 문제가 있었어요"라고 답한 글에서 얼마나 보였는지예요. 일반 리더 글에서도 흔한 표현은 판독 결과에서 덜 강조하고, 피해 응답에서 더 자주 보인 표현은 주의 표시를 붙여요.</p>
+    <div class="tablewrap" id="tableSlot"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="hist-h">
+    <h2 id="hist-h">학습 기록</h2>
+    <p class="note">매일 자동으로 다시 학습한 기록이에요. 참여가 늘수록 학습된 항목이 늘고 기준이 안정돼요.</p>
+    <div id="historySlot"><p class="note">아직 학습 기록이 없어요.</p></div>
+  </section>
+
+  <section class="panel" aria-labelledby="how-h">
+    <h2 id="how-h">어떻게 모으나요</h2>
+    <ul class="plain">
+      <li>판독 결과 아래 <b>익명 통계 참여</b>에 직접 동의하고 보낸 경우만 모아요.</li>
+      <li>보내는 것은 찾은 <b>표현 항목 이름·개수</b>와 고른 결과뿐이에요. 리딩 본문, 질문, 아이디·계좌·연락처, IP는 저장하지 않아요.</li>
+      <li>매일 한 번 자동으로 합계를 받아 다시 학습해요. 항목마다 "피해 응답 글에서 보인 비율과 일반 리더 글에서 보인 비율"을 비교해 가중치를 정하고, 판독 화면의 참고 표시에 써요.</li>
+      <li>개별 응답 기록은 따로 저장하지 않고 합계만 써요. 응답이 적은 항목은 숨기고, 일반·피해 응답이 각각 20건 이상 쌓여야 표시 기준을 바꿔요.</li>
+      <li>숫자는 참여자가 고른 결과를 그대로 합산한 거라 <b>검증된 값이 아니에요</b>. 확률이나 정확도가 아니며, 이 통계만으로 AI 사용이나 사기 여부를 판단할 수 없어요.</li>
+    </ul>
+  </section>
+</div>
+<script src="/stats-page.js"></script>
+</body>
+</html>
