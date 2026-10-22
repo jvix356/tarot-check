@@ -49,10 +49,10 @@ import { pageWindow } from './board-pagination.js';
     // 후기·피드백·댓글은 로그인 없이 닉네임만으로 쓸 수 있어요
     $('#writer').hidden = !!(me && !me.nickname);
     $('#anonRow').hidden = !!me;
-    $('#meRow').hidden = !(me && me.nickname);
+    $('#meRow').hidden = !me;
     $('#mineBox').hidden = false;
     loadMine();
-    if (me && me.nickname) { $('#meNick').textContent = me.nickname; $('#meEmail').textContent = '(인증: ' + me.email + ' · 운영자만 볼 수 있음)'; }
+    if (me) { $('#meNick').textContent = me.nickname || '기존 계정'; $('#meEmail').textContent = '(인증: ' + me.email + ' · 운영자만 볼 수 있음)'; }
     render();
   }
   var cfg = { emailAuth: false };
@@ -72,7 +72,7 @@ import { pageWindow } from './board-pagination.js';
     var b = this; b.disabled = true;
     api('/api/auth', { method: 'POST', body: { action: 'send', email: $('#email').value, age14: $('#age14').checked, privacy: $('#privacyOk').checked } }).then(function (r) {
       b.disabled = false;
-      if (r.__status === 200) { $('#codeRow').hidden = false; $('#code').focus(); say($('#loginMsg'), '메일로 인증 코드를 보냈어요. 10분 안에 입력해 주세요. 메일이 안 보이면 스팸함도 확인해 주세요.', true); }
+      if (r.__status === 200) { $('#codeRow').hidden = false; $('#code').focus(); say($('#loginMsg'), '기존 계정이 있는 경우 메일로 인증 코드를 보냈어요. 10분 안에 입력해 주세요. 메일이 안 보이면 스팸함도 확인해 주세요.', true); }
       else say($('#loginMsg'), r.message || '인증 코드를 보내지 못했어요.');
     });
   });

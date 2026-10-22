@@ -1,5 +1,5 @@
 import crypto from 'node:crypto';
-import { readJSON, writeJSON, remove } from '../lib/store.js';
+import { readJSON, writeJSON, remove, listPaths } from '../lib/store.js';
 import { send, readBody, pseudo, signToken, sameOrigin, clientIp, clip } from '../lib/util.js';
 import { mailConfigured, sendCode } from '../lib/mail.js';
 import { currentAccount, maskEmail } from '../lib/accounts.js';
@@ -26,6 +26,7 @@ export default async function handler(req, res) {
       // 개인정보 보호법 제22조의2: 만 14세 미만은 이메일 인증(개인정보 수집)을 받지 않아요. 수집·이용 동의도 확인해요.
       if (b.age14 !== true) return send(res, 400, { error: 'age', message: '이메일 인증은 만 14세 이상만 할 수 있어요.' });
       if (b.privacy !== true) return send(res, 400, { error: 'privacy', message: '개인정보 수집·이용에 동의해야 인증할 수 있어요.' });
+      if(process.env.PUBLIC_COMMUNITY_WRITES!=='1' && !(await readJSON(`accounts/u${pseudo('email',email).slice(0,20)}.json`)))return send(res,200,{ok:true});
       const key = `otp/${pseudo('email', email)}.json`;
       const ipKey = `rl/otp-ip-${pseudo('ip', clientIp(req))}.json`;
       const now = Date.now();
@@ -46,10 +47,11 @@ export default async function handler(req, res) {
       // 탈퇴: 이메일 계정 정보를 지우고, 쓴 글에서는 계정 연결과 운영자 전달 메모를 지워요(공개 글 자체는 삭제 요청으로 따로 지울 수 있어요)
       const acc = await currentAccount(req);
       if (!acc) return send(res, 401, { error: 'login_required' });
-      for (const id of acc.posts || []) {
-        const p = await readJSON(`posts/${id}.json`);
-        if (p) { p.authorId = null; p.privateNote = ''; p.withdrawnAt = new Date().toISOString(); await writeJSON(`posts/${id}.json`, p); }
+      for (const path of await listPaths('posts/')) {
+        const p = await readJSON(path);
+        if (p && p.authorId === acc.id) { p.authorId = null; p.privateNote = ''; p.withdrawnAt = new Date().toISOString(); await writeJSON(path, p); }
       }
+      if(acc.nickname)await remove(`nick/${pseudo('nick',acc.nickname)}.json`);
       await remove(`accounts/${acc.id}.json`);
       return send(res, 200, { ok: true, message: '탈퇴했어요. 이메일 정보를 삭제했어요.' });
     }
@@ -68,7 +70,9 @@ export default async function handler(req, res) {
       await remove(key);
       const uid = 'u' + pseudo('email', email).slice(0, 20);
       const path = `accounts/${uid}.json`;
-      const acc = (await readJSON(path)) || { id: uid, email, method: 'email', createdAt: new Date().toISOString(), nickname: '', sessionVersion: 1, posts: [] };
+      const existing=await readJSON(path);
+      if(!existing && process.env.PUBLIC_COMMUNITY_WRITES!=='1')return send(res,403,{error:'read_only',message:'신규 계정 접수는 중단했어요.'});
+      const acc = existing || { id: uid, email, method: 'email', createdAt: new Date().toISOString(), nickname: '', sessionVersion: 1, posts: [] };
       if (acc.disabled) return send(res, 403, { error: 'disabled', message: '이 계정은 운영 정책에 따라 이용이 제한됐어요.' });
       acc.verifiedAt = new Date().toISOString();
       await writeJSON(path, acc);

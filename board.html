@@ -85,43 +85,11 @@
   </section>
   <details class="panel" aria-labelledby="write-h" hidden>
     <summary id="write-h">글쓰기 · 후기·피드백·비공개 제보</summary>
-    <div id="authOff" class="note" hidden>제보에 필요한 이메일 인증은 준비 중이에요. 후기·피드백·댓글은 아래에서 닉네임만으로 바로 쓸 수 있어요.</div>
-
-    <div id="login" hidden>
-      <p class="note"><b>제보</b>를 쓰려면 이메일 인증이 필요해요(후기·피드백·댓글은 인증 없이 쓸 수 있어요). 인증 코드는 이 사이트에서만 쓰고, 이메일 주소는 공개되지 않아요.</p>
-      <div class="row">
-        <input type="email" id="email" autocomplete="email" placeholder="이메일 주소" aria-label="이메일 주소">
-        <button id="sendCode">인증 코드 받기</button>
-      </div>
-      <label class="check"><input type="checkbox" id="age14"> <span>만 14세 이상이에요. (만 14세 미만은 제보용 이메일 인증을 할 수 없어요)</span></label>
-      <label class="check"><input type="checkbox" id="privacyOk"> <span>개인정보 수집·이용에 동의해요. 항목: 이메일 주소 · 목적: 제보 작성 계정 확인과 부정 이용 방지 · 보유: 탈퇴할 때까지. 동의하지 않으면 제보만 쓸 수 없고 다른 기능은 그대로 쓸 수 있어요. <a href="/privacy.html">처리방침 보기</a></span></label>
-      <div class="row" id="codeRow" hidden>
-        <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="메일로 받은 6자리 코드" aria-label="인증 코드">
-        <button class="primary" id="verify">확인</button>
-      </div>
-      <p class="msg" id="loginMsg" role="status"></p>
-    </div>
-
-    <div id="nickBox" hidden>
-      <p class="note">공개 화면에 보일 닉네임을 정해 주세요. 2~12자, 한글·영문·숫자·밑줄(_)만 쓸 수 있어요.</p>
-      <div class="row">
-        <input type="text" id="nick" maxlength="12" placeholder="닉네임" aria-label="닉네임">
-        <button class="primary" id="saveNick">닉네임 저장</button>
-      </div>
-      <p class="msg" id="nickMsg" role="status"></p>
-    </div>
-
     <div id="writer" hidden>
       <label class="f" for="anonNick" id="anonRow">닉네임 <small>공개돼요. 2~12자, 한글·영문·숫자·밑줄(_)만 쓸 수 있어요.</small>
         <input type="text" id="anonNick" maxlength="12" autocomplete="nickname">
       </label>
-      <div class="row" id="meRow">
-        <span>작성자: <b id="meNick"></b></span>
-        <span class="note" id="meEmail"></span>
-        <button class="small" id="changeNick">닉네임 바꾸기</button>
-        <button class="small" id="logout">로그아웃</button>
-        <button class="small" id="withdraw">탈퇴(이메일 정보 삭제)</button>
-      </div>
+
       <label class="f" for="wType">글 종류
         <select id="wType">
           <option value="review">후기 · 써 보니 어땠는지</option>
@@ -144,7 +112,39 @@
   </details>
 
   <details class="panel" aria-labelledby="mine-h" id="mineBox">
-    <summary id="mine-h">내가 쓴 글 · 처리 상태·이의제기</summary>
+    <summary id="mine-h">내가 쓴 글 · 처리 상태·이의제기</summary>    <div id="authOff" class="note" hidden>제보에 필요한 이메일 인증은 준비 중이에요. 후기·피드백·댓글은 아래에서 닉네임만으로 바로 쓸 수 있어요.</div>
+
+    <div id="login" hidden>
+      <p class="note">기존 인증 계정의 내 글 확인·정보 삭제를 위한 로그인이에요. 신규 계정·글 접수는 중단했어요. 인증 코드는 이 사이트에서만 쓰고, 이메일 주소는 공개되지 않아요.</p>
+      <div class="row">
+        <input type="email" id="email" autocomplete="email" placeholder="이메일 주소" aria-label="이메일 주소">
+        <button id="sendCode">인증 코드 받기</button>
+      </div>
+      <label class="check"><input type="checkbox" id="age14"> <span>만 14세 이상이에요. (만 14세 미만은 제보용 이메일 인증을 할 수 없어요)</span></label>
+      <label class="check"><input type="checkbox" id="privacyOk"> <span>개인정보 수집·이용에 동의해요. 항목: 이메일 주소 · 목적: 기존 작성 계정 확인·권리 요청과 부정 이용 방지 · 보유: 탈퇴할 때까지. 동의하지 않으면 이메일로 기존 계정을 확인할 수 없지만 다른 기능은 그대로 쓸 수 있어요. <a href="/privacy.html">처리방침 보기</a></span></label>
+      <div class="row" id="codeRow" hidden>
+        <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="메일로 받은 6자리 코드" aria-label="인증 코드">
+        <button class="primary" id="verify">확인</button>
+      </div>
+      <p class="msg" id="loginMsg" role="status"></p>
+    </div>
+
+    <div id="nickBox" hidden>
+      <p class="note">공개 화면에 보일 닉네임을 정해 주세요. 2~12자, 한글·영문·숫자·밑줄(_)만 쓸 수 있어요.</p>
+      <div class="row">
+        <input type="text" id="nick" maxlength="12" placeholder="닉네임" aria-label="닉네임">
+        <button class="primary" id="saveNick">닉네임 저장</button>
+      </div>
+      <p class="msg" id="nickMsg" role="status"></p>
+    </div>
+
+      <div class="row" id="meRow">
+        <span>작성자: <b id="meNick"></b></span>
+        <span class="note" id="meEmail"></span>
+        <button class="small" id="changeNick">닉네임 바꾸기</button>
+        <button class="small" id="logout">로그아웃</button>
+        <button class="small" id="withdraw">탈퇴(이메일 정보 삭제)</button>
+      </div>
     <p class="note">인증 계정으로 쓴 글과 이 브라우저에 확인키가 남아 있는 최근 비로그인 글·댓글을 보여요. 확인키는 작성 권한을 증명하므로 공유하지 마세요. 브라우저 데이터 삭제 전 별도로 보관해 주세요. 실명 확인 절차가 아니에요.</p>
     <div class="row"><button id="refreshMine">상태 새로고침</button><button id="showKeys">내 글 확인키 보기·접기</button></div>
     <pre id="savedKeys" class="body" hidden></pre>
