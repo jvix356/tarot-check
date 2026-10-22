@@ -3,7 +3,7 @@
   var $ = function (s) { return document.querySelector(s); };
   var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
   var TYPE = { review: '후기', feedback: '피드백', report: '제보', comment: '댓글' };
-  var STATUS = { pending: '검토 대기', published: '공개 중', rejected: '반려', hidden: '비공개' };
+  var STATUS = { private: '검토 완료·운영자 전용', pending: '검토 대기', published: '공개 중', rejected: '반려', hidden: '비공개' };
   var KEY = 'tc_admin';
   var pw = ''; try { pw = sessionStorage.getItem(KEY) || ''; } catch (e) {}
   var data = { posts: [], requests: [], progress: [] }, view = 'pending';
@@ -69,7 +69,7 @@
       el('p', { class: 'body', text: p.body }),
       p.privateNote ? el('div', { class: 'ops' }, ['운영자 전달 메모: ' + p.privateNote]) : null,
       el('div', { class: 'actions' }, [
-        p.status !== 'published' ? el('button', { class: 'small primary', text: '공개', onclick: function () { act({ action: 'publish', id: p.id }, msg); } }) : el('button', { class: 'small', text: '비공개로', onclick: function () { act({ action: 'hide', id: p.id }, msg); } }),
+        p.status !== 'published' ? el('button', { class: 'small primary', text: p.type === 'report' ? '검토 완료(비공개)' : '공개', onclick: function () { act({ action: 'publish', id: p.id }, msg); } }) : el('button', { class: 'small', text: '비공개로', onclick: function () { act({ action: 'hide', id: p.id }, msg); } }),
         p.status === 'pending' ? el('button', { class: 'small', text: '반려', onclick: function () { act({ action: 'reject', id: p.id, reason: reason.value }, msg); } }) : null,
         el('button', { class: 'small', text: '정정', onclick: function () { editBox.hidden = !editBox.hidden; } }),
         el('button', { class: 'small danger', text: '삭제', onclick: function () { delConfirm.hidden = false; } }), delConfirm,
@@ -99,7 +99,7 @@
       el('div', { class: 'row' }, [st, el('button', { class: 'small', text: '저장', onclick: function () { act({ action: 'request_status', id: r.id, status: st.value, answer: ans.value }, msg); } }),
         post && post.status === 'published' ? el('button', { class: 'small', text: '대상 글 비공개', onclick: function () { act({ action: 'hide', id: post.id }, msg); } }) : null]),
       r.kind === 'appeal' && post && ['접수', '검토 중'].indexOf(r.status) >= 0 ? el('div', { class: 'row' }, [
-        el('button', { class: 'small primary', text: '재검토 후 복원', onclick: function () { act({ action: 'appeal_decision', id: r.id, decision: 'restore', answer: ans.value }, msg); } }),
+        el('button', { class: 'small primary', text: post && post.type === 'report' ? '운영자 전용으로 복원' : '재검토 후 복원', onclick: function () { act({ action: 'appeal_decision', id: r.id, decision: 'restore', answer: ans.value }, msg); } }),
         el('button', { class: 'small', text: '기존 조치 유지', onclick: function () { act({ action: 'appeal_decision', id: r.id, decision: 'uphold', answer: ans.value }, msg); } }),
       ]) : null,
       r.kind === 'appeal' && post ? el('details', null, [el('summary', { text: '대상 글·정정 도구 보기' }), postCard(post)]) : null,
@@ -109,7 +109,7 @@
 
   function render() {
     var v = $('#view'); v.textContent = '';
-    var pend = data.posts.filter(function (p) { return p.status === 'pending'; });
+    var pend = data.posts.filter(function (p) { return p.status === 'pending' && p.type !== 'report'; });
     var openReq = data.requests.filter(function (r) { return r.status === '접수' || r.status === '검토 중'; });
     $('#cPending').textContent = pend.length ? '(' + pend.length + ')' : '';
     $('#cReq').textContent = openReq.length ? '(' + openReq.length + ')' : '';
@@ -120,7 +120,7 @@
       if (!list.length) return v.appendChild(el('div', { class: 'empty', text: '받은 요청이 없어요.' }));
       return list.forEach(function (r) { v.appendChild(requestCard(r)); });
     }
-    list = data.posts.filter(function (p) { return view === 'pending' ? p.status === 'pending' : view === 'published' ? p.status === 'published' : (p.status === 'rejected' || p.status === 'hidden'); });
+    list = data.posts.filter(function (p) { return view === 'reports' ? p.type === 'report' : p.type === 'report' ? false : view === 'pending' ? p.status === 'pending' : view === 'published' ? p.status === 'published' : (p.status === 'rejected' || p.status === 'hidden'); });
     if (!list.length) return v.appendChild(el('div', { class: 'empty', text: '해당하는 글이 없어요.' }));
     list.forEach(function (p) { v.appendChild(postCard(p)); });
   }

@@ -101,7 +101,7 @@ export default async function handler(req, res) {
           const parent = await readJSON(`posts/${p.parentId}.json`);
           if (!parent || parent.status !== 'published') return send(res, 409, { error: 'parent', message: '원글을 먼저 복원해 주세요.' });
         }
-        p.status = 'published'; p.publishedAt = new Date().toISOString(); p.reporters = []; p.hiddenBy = null; p.rejectReason = '';
+        p.status = p.type === 'report' ? 'private' : 'published'; p.publishedAt = new Date().toISOString(); p.reporters = []; p.hiddenBy = null; p.rejectReason = '';
         await clearPostStrike(p.authorKey || (p.authorId ? 'acc-' + p.authorId : ''), p.id);
       }
       r.status = b.decision === 'restore' ? '처리 완료' : '반려'; r.answer = answer; r.updatedAt = new Date().toISOString();
@@ -135,7 +135,7 @@ export default async function handler(req, res) {
     const log = (what) => { p.history = [...(p.history || []), { at: now, what }].slice(-30); };
 
     switch (b.action) {
-      case 'publish': p.status = 'published'; p.publishedAt = now; if (p.hiddenBy === 'reports') { p.reporters = []; p.hiddenBy = null; } log('공개'); break;
+      case 'publish': p.status = p.type === 'report' ? 'private' : 'published'; p.publishedAt = now; if (p.hiddenBy === 'reports') { p.reporters = []; p.hiddenBy = null; } log('공개'); break;
       case 'reject': p.status = 'rejected'; p.rejectReason = clip(b.reason, 300); log('반려');
         if (b.strike !== false) await addStrike(p.authorKey || (p.authorId ? 'acc-' + p.authorId : ''), '운영자 반려', p.id);
         break;

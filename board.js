@@ -120,7 +120,7 @@
       if (r.state === 'published') loadList();
     });
   });
-  var STATUS = { pending: ['검토 대기', 'wait'], published: ['공개됨', 'ok'], rejected: ['반려', 'bad'], hidden: ['비공개', 'bad'] };
+  var STATUS = { private: ['검토 완료·비공개 제보', 'ok'], pending: ['검토 대기', 'wait'], published: ['공개됨', 'ok'], rejected: ['반려', 'bad'], hidden: ['비공개', 'bad'] };
   function loadMine() {
     var accountPosts = me ? api('/api/posts?mine=1') : Promise.resolve({ posts: [] });
     Promise.all([accountPosts, api('/api/posts', { method: 'POST', body: { action: 'lookup', keys: ownerKeys } })]).then(function (results) {
@@ -134,6 +134,7 @@
           el('div', { class: 'meta' }, [el('span', { class: 'pill type', text: p.type === 'comment' ? '댓글' : TYPE[p.type] }), el('span', { class: 'pill ' + st[1], text: st[0] }), progressPill(p.progress), el('span', { text: fmt(p.createdAt) })]),
           p.title ? el('b', { text: p.title }) : null,
           el('p', { class: 'note', text: p.body }),
+          p.type === 'report' ? el('p', {class: 'note', text: '운영자 전용 제보 · 공개되지 않아요.'}) : null,
           p.rejectReason ? el('p', { class: 'msg err', text: '조치 사유: ' + p.rejectReason }) : null,
           p.appeal ? el('p', { class: 'note', text: '이의제기: ' + p.appeal.status + (p.appeal.reason ? ' · 제출 사유: ' + p.appeal.reason : ' · 보유 기간이 지나 사유와 답변이 삭제됐어요.') + (p.appeal.answer ? ' · 운영자 답변: ' + p.appeal.answer : '') }) : null,
         ]);

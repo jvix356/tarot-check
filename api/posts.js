@@ -5,7 +5,7 @@ import { checkText, checkPrivate, checkNickname } from '../lib/filter.js';
 import { TYPES, publicIndex, rebuildIndex } from '../lib/board.js';
 import { authorKey, blockState } from '../lib/moderation.js';
 
-// 후기·피드백·댓글은 닉네임만으로 쓰고 바로 공개돼요. 제보는 이메일 인증 후 운영자 확인을 거쳐 공개돼요.
+// 후기·피드백·댓글은 닉네임만으로 쓰고 바로 공개돼요. 제보는 이메일 인증 후 운영자 전용으로 접수돼요.
 const OPEN_TYPES = ['review', 'feedback', 'comment'];
 
 import { newOwnerToken, ownerHash, ownsPost, ownerView } from '../lib/ownership.js';
@@ -67,7 +67,7 @@ export default async function handler(req, res) {
     if (type === 'comment') {
       parentId = clip(b.parentId, 40);
       const parent = await readJSON(`posts/${parentId}.json`);
-      if (!parent || parent.status !== 'published' || parent.type === 'comment') return send(res, 404, { error: 'parent', message: '댓글을 달 글을 찾지 못했어요.' });
+      if (!parent || parent.status !== 'published' || ['comment', 'report'].includes(parent.type)) return send(res, 404, { error: 'parent', message: '댓글을 달 글을 찾지 못했어요.' });
     }
 
     const chk = checkText(title + '\n' + body);
@@ -82,7 +82,7 @@ export default async function handler(req, res) {
     rl.recent = (rl.recent || []).filter(t => now - t < DAY);
     if (rl.recent.length >= (acc ? 10 : 5)) return send(res, 429, { error: 'rate', message: '하루에 쓸 수 있는 글 수를 넘었어요. 내일 다시 써 주세요.' });
 
-    // 특정인을 사기꾼으로 단정하는 표현 등 검토 표시가 있거나 제보면 운영자 확인 뒤 공개
+    // 특정인을 사기꾼으로 단정하는 표현 등 검토 표시가 있거나 제보면 운영자 전용 검토
     const review = type === 'report' || chk.flags.length > 0;
     const id = newId();
     const ownerToken = acc ? null : newOwnerToken();
@@ -100,7 +100,7 @@ export default async function handler(req, res) {
     await writeJSON(rlPath, rl);
     if (!review) await rebuildIndex();
     const message = !review ? '바로 공개됐어요. 문제가 있는 글은 신고가 쌓이면 자동으로 숨겨져요.'
-      : type === 'report' ? '접수됐어요. 제보는 운영자가 확인한 뒤 공개돼요.'
+      : type === 'report' ? '접수됐어요. 제보는 운영자 전용으로 접수됐어요. 공개 게시판에는 나오지 않아요.'
       : '특정인을 단정하는 표현(' + chk.flags.join(', ') + ')이 있어 운영자가 확인한 뒤 공개돼요.';
     return send(res, 200, { ok: true, id, ownerToken, state: post.status, message });
   } catch (e) {

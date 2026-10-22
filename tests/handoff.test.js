@@ -33,7 +33,7 @@ test('write → private note → moderation → public API, and admin cannot byp
  assert.equal((await call(posts,'POST',{...draft,body:'@reader 계정을 제보합니다.'},token)).status,400);
  const made=await call(posts,'POST',draft,token);assert.equal(made.status,200);
  assert.equal((await call(admin,'POST',{action:'publish',id:made.id})).status,200);
- const list=await call(posts,'GET',null,token);assert.equal(list.posts.length,1);assert.ok(!JSON.stringify(list).includes('@reader'));
+ const list=await call(posts,'GET',null,token);assert.equal(list.posts.length,0);assert.equal((await readJSON(`posts/${made.id}.json`)).status,'private');assert.ok(!JSON.stringify(list).includes('@reader'));
  assert.equal((await call(admin,'POST',{action:'edit',id:made.id,body:'@reader 계정을 제보합니다.'})).status,400);
  assert.equal((await call(admin,'POST',{action:'reply',id:made.id,reply:'https://example.com'})).status,400);
  assert.equal((await readJSON(`posts/${made.id}.json`)).body,draft.body);
