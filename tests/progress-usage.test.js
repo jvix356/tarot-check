@@ -30,3 +30,11 @@ test('30-day window uses Korea date and excludes future and malformed paths',()=
  const path=d=>'usage/events/'+d+'-'+'a'.repeat(64)+'.json';
  assert.equal(usageCount([path('2026-10-23'),path('2026-09-24'),path('2026-09-23'),path('2026-10-24'),'bad'],now),2);
 });
+test('browser count needs separate consent and deduplicates across dates and sessions',async()=>{
+ const {browserCount}=await import('../api/usage.js');
+ assert.equal((await call({id:'e'.repeat(32),browser:'f'.repeat(32)})).status,400);
+ for(const id of ['e','f'])assert.equal((await call({id:id.repeat(32),browser:'f'.repeat(32),browserConsent:true,age14:true})).status,200);
+ assert.equal((await call()).browsers,1);
+ const path=d=>'usage/browsers/'+d+'-'+'a'.repeat(64)+'.json';
+ assert.equal(browserCount([path('2026-10-22'),path('2026-10-21'),path('2020-01-01')],Date.parse('2026-10-22T00:00Z')),1);
+});

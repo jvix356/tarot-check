@@ -114,6 +114,7 @@
     $('#cPending').textContent = pend.length ? '(' + pend.length + ')' : '';
     $('#cReq').textContent = openReq.length ? '(' + openReq.length + ')' : '';
     var list;
+    if (view === 'experience') return renderExperience(v);
     if (view === 'teaching') return renderTeaching(v);
     if (view === 'stats') return renderStats(v);
     if (view === 'requests') {
@@ -159,6 +160,22 @@
         var days = Object.keys(s.byDay || {}).sort().slice(-30);
         v.appendChild(el('div', { class: 'post' }, [el('h3', { text: '최근 30일 날짜별 참여' }), el('p', { class: 'note', text: days.map(function (d) { return d.slice(5) + ' ' + s.byDay[d]; }).join(' · ') || '아직 없어요.' })]));
       });
+  }
+
+  function renderExperience(v) {
+    v.textContent='불러오는 중…';
+    fetch('/api/experience',{headers:{Authorization:'Bearer '+pw}}).then(function(r){return r.json().then(function(j){j.ok=r.ok;return j;});}).then(function(j){
+      if(view!=='experience')return;v.textContent='';
+      if(!j.ok)return v.appendChild(el('p',{text:'의견을 불러오지 못했어요.'}));
+      v.appendChild(el('p',{class:'note',text:'운영자 전용 비공개 의견이에요. 외부에 재게시하지 말고, 개인정보·타인 저작물이 있으면 권리 보호 절차로 처리하세요. 원문 리딩은 자동 첨부되지 않으며 의견은 최대 180일 보관해요. 정확도 정답이나 AI 학습 데이터로 자동 반영되지 않아요.'}));
+      if(!j.opinions.length)v.appendChild(el('p',{text:'접수된 의견이 없어요.'}));
+      j.opinions.forEach(function(p){
+        var select=el('select',{'aria-label':'의견 처리 상태'}),msg=el('p',{role:'status'});
+        [['new','접수'],['reviewing','검토 중'],['done','검토 완료']].forEach(function(x){select.appendChild(el('option',{value:x[0],text:x[1]}));});select.value=p.status;
+        var save=el('button',{text:'상태 저장',onclick:function(){save.disabled=true;fetch('/api/experience',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+pw},body:JSON.stringify({action:'review',id:p.id,status:select.value})}).then(function(r){msg.textContent=r.ok?'저장했어요.':'저장하지 못했어요.';}).catch(function(){msg.textContent='연결 오류';}).finally(function(){save.disabled=false;});}});
+        v.appendChild(el('article',{class:'post'},[el('h3',{text:({helpful:'도움이 됐어요',mixed:'조금 도움이 됐어요',unhelpful:'아쉬워요'})[p.rating]}),el('p',{text:p.comment||'(추가 의견 없음)'}),el('p',{class:'note',text:p.createdAt+' · 접수번호 '+p.id}),select,save,el('button',{text:'의견 삭제',onclick:function(){if(!confirm('접수번호와 삭제 요청을 확인했나요? 의견을 삭제하면 복원할 수 없어요.'))return;fetch('/api/experience',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+pw},body:JSON.stringify({action:'delete',id:p.id})}).then(function(r){if(r.ok)renderExperience(v);else msg.textContent='삭제하지 못했어요.';}).catch(function(){msg.textContent='연결 오류';});}}),msg]));
+      });
+    }).catch(function(){v.textContent='의견을 불러오지 못했어요.';});
   }
 
   function renderTeaching(v) {
