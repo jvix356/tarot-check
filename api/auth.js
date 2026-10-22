@@ -23,6 +23,9 @@ export default async function handler(req, res) {
       if (!mailConfigured()) return send(res, 503, { error: 'mail_not_configured', message: '이메일 인증이 아직 준비 중이에요.' });
       const email = clip(b.email, 254).toLowerCase();
       if (!EMAIL_RE.test(email)) return send(res, 400, { error: 'email', message: '이메일 주소를 확인해 주세요.' });
+      // 개인정보 보호법 제22조의2: 만 14세 미만은 이메일 인증(개인정보 수집)을 받지 않아요. 수집·이용 동의도 확인해요.
+      if (b.age14 !== true) return send(res, 400, { error: 'age', message: '이메일 인증은 만 14세 이상만 할 수 있어요.' });
+      if (b.privacy !== true) return send(res, 400, { error: 'privacy', message: '개인정보 수집·이용에 동의해야 인증할 수 있어요.' });
       const key = `otp/${pseudo('email', email)}.json`;
       const ipKey = `rl/otp-ip-${pseudo('ip', clientIp(req))}.json`;
       const now = Date.now();
@@ -37,6 +40,18 @@ export default async function handler(req, res) {
       await writeJSON(key, { codeHash: pseudo('code', email + ':' + code), exp: now + 10 * 60e3, tries: 0, sends: prev.sends });
       await writeJSON(ipKey, ipRec);
       return send(res, 200, { ok: true });
+    }
+
+    if (b.action === 'withdraw') {
+      // 탈퇴: 이메일 계정 정보를 지우고, 쓴 글에서는 계정 연결과 운영자 전달 메모를 지워요(공개 글 자체는 삭제 요청으로 따로 지울 수 있어요)
+      const acc = await currentAccount(req);
+      if (!acc) return send(res, 401, { error: 'login_required' });
+      for (const id of acc.posts || []) {
+        const p = await readJSON(`posts/${id}.json`);
+        if (p) { p.authorId = null; p.privateNote = ''; p.withdrawnAt = new Date().toISOString(); await writeJSON(`posts/${id}.json`, p); }
+      }
+      await remove(`accounts/${acc.id}.json`);
+      return send(res, 200, { ok: true, message: '탈퇴했어요. 이메일 정보를 삭제했어요.' });
     }
 
     if (b.action === 'verify') {

@@ -8,5 +8,6 @@ export default function handler(req, res) {
     store: storeConfigured(),
     emailAuth: mailConfigured(),
     admin: !!process.env.ADMIN_TOKEN || process.env.STORE === 'memory',
+    deckSearch: !!process.env.GOOGLE_VISION_API_KEY,
   });
 }

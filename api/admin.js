@@ -12,12 +12,34 @@ function isAdmin(req) {
   return want.length >= 16 && safeEqual(bearer(req), want);
 }
 
+// 처리방침의 보유 기간을 지키도록, 운영자 화면을 열 때 기간이 지난 기록을 지워요
+// - 처리 끝난 신고·삭제·정정 요청: 처리 후 1년
+// - 작성 제한 기록: 제한이 끝났고 마지막 위반이 180일 지난 것
+// - 인증 코드·요청 횟수 기록: 하루 지난 것
+async function purgeExpired(now = Date.now()) {
+  for (const k of await listPaths('requests/')) {
+    const r = await readJSON(k);
+    if (r && ['처리 완료', '반려'].includes(r.status) && now - Date.parse(r.updatedAt || r.createdAt) > 365 * 864e5) await remove(k);
+  }
+  for (const k of await listPaths('blocks/')) {
+    const b = await readJSON(k);
+    const last = Math.max(0, ...((b && b.strikes) || []).map(s => Date.parse(s.at) || 0));
+    if (b && (!b.until || Date.parse(b.until) < now) && now - last > 180 * 864e5) await remove(k);
+  }
+  for (const pre of ['otp/', 'rl/']) for (const k of await listPaths(pre)) {
+    const r = await readJSON(k);
+    const ts = [r && r.exp, ...((r && (r.t || r.recent || r.sends)) || [])].filter(Boolean);
+    if (!ts.length || now - Math.max(...ts) > 864e5) await remove(k);
+  }
+}
+
 export default async function handler(req, res) {
   try {
     if (adminSecret().length < 16) return send(res, 503, { error: 'admin_not_configured', message: '운영자 비밀번호(ADMIN_TOKEN, 16자 이상)가 아직 설정되지 않았어요.' });
     if (!isAdmin(req)) return send(res, 401, { error: 'unauthorized' });
 
     if (req.method === 'GET') {
+      await purgeExpired();
       const posts = await allPosts();
       const accCache = {};
       for (const p of posts) {
