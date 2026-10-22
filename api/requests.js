@@ -2,6 +2,8 @@ import { readJSON, writeJSON } from '../lib/store.js';
 import { send, readBody, newId, sameOrigin, clip, pseudo, clientIp } from '../lib/util.js';
 import { checkPrivate } from '../lib/filter.js';
 import { currentAccount } from '../lib/accounts.js';
+import { authorKey, addReporter, addStrike, HIDE_AFTER } from '../lib/moderation.js';
+import { rebuildIndex } from '../lib/board.js';
 
 const KINDS = { report: '신고', delete: '삭제 요청', correct: '정정 요청' };
 const DAY = 864e5;
@@ -31,12 +33,26 @@ export default async function handler(req, res) {
     rl.t.push(now); await writeJSON(ipKey, rl);
 
     const acc = await currentAccount(req).catch(() => null);
+    const reporterKey = authorKey(req, acc);
     const id = newId();
     await writeJSON(`requests/${id}.json`, {
-      id, kind, postId, reason, contact, accountId: acc ? acc.id : null,
+      id, kind, postId, reason, contact, accountId: acc ? acc.id : null, reporterKey,
       status: '접수', createdAt: new Date(now).toISOString(), answer: '',
     });
-    return send(res, 200, { ok: true, id, message: `${KINDS[kind]}이 접수됐어요. 운영자가 확인할게요.` });
+
+    // 서로 다른 신고자 3명이 신고하면 운영자 확인 전까지 자동으로 숨겨요(작성자 본인 신고는 세지 않아요)
+    let hidden = false;
+    if (kind === 'report' && reporterKey !== post.authorKey) {
+      if (addReporter(post, reporterKey) && post.status === 'published') {
+        post.status = 'hidden'; post.hiddenBy = 'reports';
+        post.history = [...(post.history || []), { at: new Date(now).toISOString(), what: `신고 ${HIDE_AFTER}명 누적으로 자동 숨김` }].slice(-30);
+        hidden = true;
+        await addStrike(post.authorKey || (post.authorId ? 'acc-' + post.authorId : ''), '신고 누적 자동 숨김');
+      }
+      await writeJSON(`posts/${postId}.json`, post);
+      if (hidden) await rebuildIndex();
+    }
+    return send(res, 200, { ok: true, id, hidden, message: hidden ? '신고가 접수됐어요. 여러 명의 신고가 쌓여 이 글은 운영자 확인 전까지 숨겨졌어요.' : `${KINDS[kind]}이 접수됐어요. 운영자가 확인할게요.` });
   } catch (e) {
     return send(res, e.status || 500, { error: 'server', message: '잠시 후 다시 시도해 주세요.' });
   }

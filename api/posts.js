@@ -1,8 +1,12 @@
 import { readJSON, writeJSON } from '../lib/store.js';
 import { send, readBody, newId, sameOrigin, clip } from '../lib/util.js';
 import { currentAccount } from '../lib/accounts.js';
-import { checkText, checkPrivate } from '../lib/filter.js';
-import { TYPES, publicIndex } from '../lib/board.js';
+import { checkText, checkPrivate, checkNickname } from '../lib/filter.js';
+import { TYPES, publicIndex, rebuildIndex } from '../lib/board.js';
+import { authorKey, blockState } from '../lib/moderation.js';
+
+// 후기·피드백·댓글은 닉네임만으로 쓰고 바로 공개돼요. 제보는 이메일 인증 후 운영자 확인을 거쳐 공개돼요.
+const OPEN_TYPES = ['review', 'feedback', 'comment'];
 
 const DAY = 864e5;
 
@@ -26,12 +30,21 @@ export default async function handler(req, res) {
     if (req.method !== 'POST') return send(res, 405, { error: 'method' });
     if (!sameOrigin(req)) return send(res, 403, { error: 'origin' });
     const acc = await currentAccount(req);
-    if (!acc) return send(res, 401, { error: 'login_required', message: '이메일 인증 후에 글을 쓸 수 있어요.' });
-    if (!acc.nickname) return send(res, 400, { error: 'nickname_required', message: '먼저 닉네임을 정해 주세요.' });
-
     const b = await readBody(req);
     const type = String(b.type || '');
     if (!TYPES[type]) return send(res, 400, { error: 'type' });
+    if (!acc && !OPEN_TYPES.includes(type)) return send(res, 401, { error: 'login_required', message: '제보는 이메일 인증 후에 쓸 수 있어요.' });
+    let nickname = acc && acc.nickname;
+    if (!acc) {
+      nickname = clip(b.nickname, 12);
+      const bad = checkNickname(nickname);
+      if (bad) return send(res, 400, { error: 'nickname', message: bad });
+    } else if (!nickname) return send(res, 400, { error: 'nickname_required', message: '먼저 닉네임을 정해 주세요.' });
+
+    const key = authorKey(req, acc);
+    const blocked = await blockState(key);
+    if (blocked) return send(res, 403, { error: 'blocked', message: '운영 원칙 위반이 반복돼 ' + blocked.until.slice(0, 10) + '까지 글을 쓸 수 없어요. 문의는 각 글의 정정 요청으로 보내 주세요.' });
+
     const title = type === 'comment' ? '' : clip(b.title, 60);
     const body = clip(b.body, type === 'comment' ? 500 : 3000);
     const note = type === 'report' ? clip(b.privateNote, 1500) : '';
@@ -53,20 +66,30 @@ export default async function handler(req, res) {
     if (noteBad.length) return send(res, 400, { error: 'filtered', blocked: noteBad, message: `운영자 전달 내용에 쓸 수 없는 표현이 있어요: ${noteBad.join(', ')}` });
 
     const now = Date.now();
-    acc.recent = (acc.recent || []).filter(t => now - t < DAY);
-    if (acc.recent.length >= 10) return send(res, 429, { error: 'rate', message: '하루에 쓸 수 있는 글 수를 넘었어요. 내일 다시 써 주세요.' });
+    const rlPath = acc ? `accounts/${acc.id}.json` : `rl/post-${key}.json`;
+    const rl = acc || (await readJSON(rlPath)) || {};
+    rl.recent = (rl.recent || []).filter(t => now - t < DAY);
+    if (rl.recent.length >= (acc ? 10 : 5)) return send(res, 429, { error: 'rate', message: '하루에 쓸 수 있는 글 수를 넘었어요. 내일 다시 써 주세요.' });
 
+    // 특정인을 사기꾼으로 단정하는 표현 등 검토 표시가 있거나 제보면 운영자 확인 뒤 공개
+    const review = type === 'report' || chk.flags.length > 0;
     const id = newId();
     const post = {
       id, type, parentId, title, body, privateNote: note,
-      nickname: acc.nickname, authorId: acc.id,
-      status: 'pending', progress: type === 'feedback' || type === 'report' ? '접수' : null,
-      flags: chk.flags, createdAt: new Date(now).toISOString(), reply: null, history: [],
+      nickname, authorId: acc ? acc.id : null, authorKey: key,
+      status: review ? 'pending' : 'published', publishedAt: review ? null : new Date(now).toISOString(),
+      progress: type === 'feedback' || type === 'report' ? '접수' : null,
+      flags: chk.flags, createdAt: new Date(now).toISOString(), reply: null, history: [], reporters: [],
     };
     await writeJSON(`posts/${id}.json`, post);
-    acc.recent.push(now); acc.posts = [...(acc.posts || []), id].slice(-200);
-    await writeJSON(`accounts/${acc.id}.json`, acc);
-    return send(res, 200, { ok: true, id, message: '접수됐어요. 운영자가 확인한 뒤 공개돼요.' });
+    rl.recent.push(now);
+    if (acc) { acc.posts = [...(acc.posts || []), id].slice(-200); }
+    await writeJSON(rlPath, rl);
+    if (!review) await rebuildIndex();
+    const message = !review ? '바로 공개됐어요. 문제가 있는 글은 신고가 쌓이면 자동으로 숨겨져요.'
+      : type === 'report' ? '접수됐어요. 제보는 운영자가 확인한 뒤 공개돼요.'
+      : '특정인을 단정하는 표현(' + chk.flags.join(', ') + ')이 있어 운영자가 확인한 뒤 공개돼요.';
+    return send(res, 200, { ok: true, id, state: post.status, message });
   } catch (e) {
     return send(res, e.status || 500, { error: 'server', message: '잠시 후 다시 시도해 주세요.' });
   }

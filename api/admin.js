@@ -2,6 +2,7 @@ import { checkText } from '../lib/filter.js';
 import { readJSON, writeJSON, listPaths, remove } from '../lib/store.js';
 import { send, readBody, bearer, safeEqual, clip } from '../lib/util.js';
 import { allPosts, rebuildIndex, PROGRESS } from '../lib/board.js';
+import { addStrike, setBlock, blockState } from '../lib/moderation.js';
 
 function adminSecret() {
   return process.env.ADMIN_TOKEN || (process.env.STORE === 'memory' ? 'test-admin-token-1234' : '');
@@ -23,6 +24,11 @@ export default async function handler(req, res) {
         if (!accCache[p.authorId]) accCache[p.authorId] = await readJSON(`accounts/${p.authorId}.json`);
         const a = accCache[p.authorId];
         p.author = a ? { id: a.id, email: a.email, method: a.method, verifiedAt: a.verifiedAt, disabled: !!a.disabled } : null;
+        const key = p.authorKey || (p.authorId ? 'acc-' + p.authorId : '');
+        const bl = key ? await blockState(key) : null;
+        p.block = key ? { key, blockedUntil: bl ? bl.until : null } : null;
+        p.reportCount = (p.reporters || []).length;
+        delete p.reporters;
       }
       const requests = [];
       for (const k of await listPaths('requests/')) { const r = await readJSON(k); if (r) requests.push(r); }
@@ -44,6 +50,13 @@ export default async function handler(req, res) {
       return send(res, 200, { ok: true });
     }
 
+    if (b.action === 'block_author') {
+      const key = clip(b.key, 80);
+      if (!/^(acc|ip)-[\w-]+$/.test(key)) return send(res, 400, { error: 'key' });
+      const r = await setBlock(key, !!b.blocked);
+      return send(res, 200, { ok: true, blockedUntil: r.until });
+    }
+
     if (b.action === 'disable_account') {
       const a = await readJSON(`accounts/${id}.json`);
       if (!a) return send(res, 404, { error: 'not_found' });
@@ -58,8 +71,10 @@ export default async function handler(req, res) {
     const log = (what) => { p.history = [...(p.history || []), { at: now, what }].slice(-30); };
 
     switch (b.action) {
-      case 'publish': p.status = 'published'; p.publishedAt = now; log('공개'); break;
-      case 'reject': p.status = 'rejected'; p.rejectReason = clip(b.reason, 300); log('반려'); break;
+      case 'publish': p.status = 'published'; p.publishedAt = now; if (p.hiddenBy === 'reports') { p.reporters = []; p.hiddenBy = null; } log('공개'); break;
+      case 'reject': p.status = 'rejected'; p.rejectReason = clip(b.reason, 300); log('반려');
+        if (b.strike !== false) await addStrike(p.authorKey || (p.authorId ? 'acc-' + p.authorId : ''), '운영자 반려');
+        break;
       case 'hide': p.status = 'hidden'; log('비공개 전환'); break;
       case 'delete':
         await remove(`posts/${id}.json`);
