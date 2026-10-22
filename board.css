@@ -80,3 +80,5 @@ ul.plain{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px}
 footer{border-top:1px solid var(--line);padding-top:14px;font-size:13px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
 
 #savedKeys { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.progress-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.progress-metric{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.progress-metric span{display:block;color:var(--muted);font-size:13px}.progress-metric strong{display:block;margin-top:5px;font-size:28px;color:var(--ink)}#improvementProgress progress{width:100%;height:22px;accent-color:var(--accent)}

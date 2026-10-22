@@ -77,7 +77,7 @@
         .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
         .then(function (x) {
           msg.textContent = x.ok ? '통계 참여 고마워요! 나눠 주신 정보는 판독 기준을 개선하고 잘못된 안내를 줄이는 데 참고할게요.' : (x.j.message || '보내지 못했어요.');
-          if (x.ok) { sentKeys[key] = true; markSent(); } else btn.disabled = false;
+          if (x.ok) { window.dispatchEvent(new Event('tc:stats-sent')); sentKeys[key] = true; markSent(); } else btn.disabled = false;
         })
         .catch(function () { msg.textContent = '인터넷 연결을 확인해 주세요.'; btn.disabled = false; });
     });
