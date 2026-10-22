@@ -145,7 +145,8 @@ export default async function handler(req, res) {
       case 'hide': p.rejectReason = clip(b.reason, 300) || '운영자 검토를 위해 비공개로 전환했어요.'; p.status = 'hidden'; log('비공개 전환'); break;
       case 'delete':
         await remove(`posts/${id}.json`);
-        if (p.type !== 'comment') for (const k of await listPaths('posts/')) { const c = await readJSON(k); if (c && c.parentId === id) await remove(k); }
+        for (const k of await listPaths('posts/')) { const c = await readJSON(k); if (c && (c.parentId === id || c.rootId === id)) await remove(k); }
+        await remove(`meta/${id}.json`);
         await rebuildIndex();
         return send(res, 200, { ok: true });
       case 'progress': if (!PROGRESS.includes(b.progress)) return send(res, 400, { error: 'progress' }); p.progress = b.progress; log('상태: ' + b.progress); break;

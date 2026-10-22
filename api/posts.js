@@ -6,6 +6,7 @@ import { TYPES, publicIndex, rebuildIndex } from '../lib/board.js';
 import { authorKey, blockState, checkNickLock } from '../lib/moderation.js';
 import { pseudo } from '../lib/util.js';
 import { purgeReportNotes, NOTE_DAYS } from '../lib/retention.js';
+import { react, view, meta } from '../lib/reactions.js';
 
 // 후기·피드백·댓글은 닉네임만으로 쓰고 바로 공개돼요. 제보는 이메일 인증 후 운영자 전용으로 접수돼요.
 const OPEN_TYPES = ['review', 'feedback', 'comment'];
@@ -35,6 +36,24 @@ export default async function handler(req, res) {
     if (!sameOrigin(req)) return send(res, 403, { error: 'origin' });
     const acc = await currentAccount(req);
     const b = await readBody(req);
+    // 공감·조회수: 공개된 글·댓글만. 누른 사람은 접속 구분값+브라우저 구분값을 변환한 값으로만 구분해요.
+    if (['react', 'view', 'meta'].includes(b.action)) {
+      const rk = pseudo('react', authorKey(req, null) + '|' + (/^[a-f0-9]{32}$/.test(String(b.dev || '')) ? b.dev : ''));
+      if (b.action === 'meta') {
+        const ids = (Array.isArray(b.ids) ? b.ids : []).filter(x => /^[a-z0-9]{10,40}$/.test(String(x))).slice(0, 60);
+        return send(res, 200, { meta: await meta(ids, rk) });
+      }
+      const id = String(b.id || '');
+      if (!/^[a-z0-9]{10,40}$/.test(id)) return send(res, 400, { error: 'id' });
+      const target = await readJSON(`posts/${id}.json`);
+      if (!target || target.status !== 'published' || target.type === 'report') return send(res, 404, { error: 'not_found', message: '글을 찾지 못했어요.' });
+      if (b.action === 'view') return send(res, 200, { v: await view(id, rk) });
+      const now = Date.now(), rlp = `rl/react-${rk}.json`, rr = (await readJSON(rlp)) || {}; rr.recent = (rr.recent || []).filter(t => now - t < DAY);
+      if (rr.recent.length >= 300) return send(res, 429, { error: 'rate', message: '오늘은 공감을 충분히 눌렀어요. 내일 다시 눌러 주세요.' });
+      rr.recent.push(now); await writeJSON(rlp, rr);
+      const out = await react(id, String(b.emoji || ''), rk);
+      return out ? send(res, 200, out) : send(res, 400, { error: 'emoji' });
+    }
     if (b.action === 'lookup') {
       const mine = [];
       for (const item of (Array.isArray(b.keys) ? b.keys : []).slice(0, 50)) {
@@ -74,7 +93,14 @@ export default async function handler(req, res) {
     if (type === 'comment') {
       parentId = clip(b.parentId, 40);
       const parent = await readJSON(`posts/${parentId}.json`);
-      if (!parent || parent.status !== 'published' || ['comment', 'report'].includes(parent.type)) return send(res, 404, { error: 'parent', message: '댓글을 달 글을 찾지 못했어요.' });
+      if (!parent || parent.status !== 'published' || parent.type === 'report') return send(res, 404, { error: 'parent', message: '댓글을 달 글을 찾지 못했어요.' });
+      // 대댓글: 댓글에 한 단계까지만 답글을 달 수 있어요(대댓글에 또 달면 같은 댓글 묶음 아래로 들어가요).
+      if (parent.type === 'comment') {
+        const rootId = parent.rootId || parent.parentId, root = await readJSON(`posts/${rootId}.json`);
+        if (!root || root.status !== 'published' || root.type === 'report') return send(res, 404, { error: 'parent', message: '댓글을 달 글을 찾지 못했어요.' });
+        if (parent.rootId) parentId = parent.parentId; // 대댓글의 대댓글은 원래 댓글 아래로
+        b.__root = rootId;
+      } else b.__root = parent.id;
     }
 
     const chk = checkText((title + '\n' + body).split('[가림]').join(' '));
@@ -99,7 +125,7 @@ export default async function handler(req, res) {
     const id = newId();
     const ownerToken = acc ? null : newOwnerToken();
     const post = {
-      id, type, parentId, title, body, privateNote: note,
+      id, type, parentId, rootId: type === 'comment' && b.__root !== parentId ? b.__root : null, title, body, privateNote: note,
       ownerHash: ownerToken ? ownerHash(ownerToken) : null,
       nickname, authorId: acc ? acc.id : null, authorKey: key, devKey: dev,
       status: review ? 'pending' : 'published', publishedAt: review ? null : new Date(now).toISOString(),
