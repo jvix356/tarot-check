@@ -48,6 +48,8 @@
         <input type="email" id="email" autocomplete="email" placeholder="이메일 주소" aria-label="이메일 주소">
         <button id="sendCode">인증 코드 받기</button>
       </div>
+      <label class="check"><input type="checkbox" id="age14"> <span>만 14세 이상이에요. (만 14세 미만은 제보용 이메일 인증을 할 수 없어요)</span></label>
+      <label class="check"><input type="checkbox" id="privacyOk"> <span>개인정보 수집·이용에 동의해요. 항목: 이메일 주소 · 목적: 제보 작성 계정 확인과 부정 이용 방지 · 보유: 탈퇴할 때까지. 동의하지 않으면 제보만 쓸 수 없고 다른 기능은 그대로 쓸 수 있어요. <a href="/privacy.html">처리방침 보기</a></span></label>
       <div class="row" id="codeRow" hidden>
         <input type="text" id="code" inputmode="numeric" maxlength="6" placeholder="메일로 받은 6자리 코드" aria-label="인증 코드">
         <button class="primary" id="verify">확인</button>
@@ -73,6 +75,7 @@
         <span class="note" id="meEmail"></span>
         <button class="small" id="changeNick">닉네임 바꾸기</button>
         <button class="small" id="logout">로그아웃</button>
+        <button class="small" id="withdraw">탈퇴(이메일 정보 삭제)</button>
       </div>
       <label class="f" for="wType">글 종류
         <select id="wType">
@@ -111,7 +114,7 @@
 
   <footer>
     <p>게시판 글은 작성자 개인의 경험과 의견이며 운영자의 판단이나 사실 확인을 뜻하지 않아요.</p>
-    <p>개인정보·권리 침해 신고는 각 글의 "신고" 또는 "삭제 요청" 버튼으로 보내 주세요.</p>
+    <p>개인정보·권리 침해 신고는 각 글의 "신고" 또는 "삭제 요청" 버튼으로 보내 주세요. <a href="/privacy.html">개인정보 처리방침</a></p>
   </footer>
 </div>
 <script src="board.js"></script>

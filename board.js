@@ -59,7 +59,7 @@
 
   $('#sendCode').addEventListener('click', function () {
     var b = this; b.disabled = true;
-    api('/api/auth', { method: 'POST', body: { action: 'send', email: $('#email').value } }).then(function (r) {
+    api('/api/auth', { method: 'POST', body: { action: 'send', email: $('#email').value, age14: $('#age14').checked, privacy: $('#privacyOk').checked } }).then(function (r) {
       b.disabled = false;
       if (r.__status === 200) { $('#codeRow').hidden = false; $('#code').focus(); say($('#loginMsg'), '메일로 인증 코드를 보냈어요. 10분 안에 입력해 주세요. 메일이 안 보이면 스팸함도 확인해 주세요.', true); }
       else say($('#loginMsg'), r.message || '인증 코드를 보내지 못했어요.');
@@ -84,6 +84,17 @@
   });
   $('#changeNick').addEventListener('click', function () { $('#nick').value = me.nickname; $('#nickBox').hidden = false; $('#nick').focus(); });
   $('#logout').addEventListener('click', function () { setToken(''); me = null; showAuth(cfg); });
+  var withdrawArmed = false;
+  $('#withdraw').addEventListener('click', function () {
+    var b = this;
+    if (!withdrawArmed) { withdrawArmed = true; b.textContent = '정말 탈퇴할게요 (한 번 더 누르기)'; return; }
+    b.disabled = true;
+    api('/api/auth', { method: 'POST', body: { action: 'withdraw' } }).then(function (r) {
+      b.disabled = false; withdrawArmed = false; b.textContent = '탈퇴(이메일 정보 삭제)';
+      if (r.__status !== 200) return say($('#writeMsg'), r.message || '탈퇴하지 못했어요.');
+      setToken(''); me = null; showAuth(cfg); say($('#loginMsg'), r.message, true);
+    });
+  });
 
   /* ---------- 글쓰기 ---------- */
   $('#wType').addEventListener('change', function () { $('#noteWrap').hidden = this.value !== 'report'; });

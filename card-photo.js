@@ -19,6 +19,7 @@
   function deckKey() { return String((deckInput && deckInput.value) || '기본').toLowerCase().replace(/[\s\-_·.()]/g, '').slice(0, 40) || '기본'; }
   function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
   fetch('/data/decks.json').then(function (r) { return r.ok ? r.json() : null; }).then(function (j) { decks = j; }).catch(function () {});
+  var cfg = {}; fetch('/api/config').then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) { cfg = j || {}; }).catch(function () {});
 
   var TAROT = (function () {
     var M = ['바보', '마법사', '여사제', '여황제', '황제', '교황', '연인', '전차', '힘', '은둔자', '운명의 수레바퀴', '정의', '매달린 사람', '죽음', '절제', '악마', '탑', '별', '달', '태양', '심판', '세계'];
@@ -46,7 +47,10 @@
       bits += a > bb ? '1' : '0';
     }
     var th = document.createElement('canvas'); th.width = 72; th.height = 120; th.getContext('2d').drawImage(bmp, sx, 0, sw, bmp.height, 0, 0, 72, 120);
-    return { f: { h: hist, b: bits }, thumb: th };
+    // 덱 자동 검색용 축소본(최대 높이 480px). 메모리에만 두고 저장하지 않아요
+    var sc = Math.min(1, 480 / bmp.height), big = document.createElement('canvas'); big.width = Math.max(1, Math.round(sw * sc)); big.height = Math.max(1, Math.round(bmp.height * sc));
+    big.getContext('2d').drawImage(bmp, sx, 0, sw, bmp.height, 0, 0, big.width, big.height);
+    return { f: { h: hist, b: bits }, thumb: th, big: big };
   }
   function similarity(a, b) {
     var c = 0, i; for (i = 0; i < a.h.length; i++) c += Math.min(a.h[i], b.h[i]);
@@ -116,7 +120,7 @@
         for (var k = 0; k < n; k++) {
           var ft = features(bmp, w * k, w), cand = recognize(ft.f);
           var top = cand[0] && cand[0].score >= 0.6 ? cand[0] : null;
-          photos.push({ feat: ft.f, thumb: ft.thumb, cand: cand, card: top ? top.card : '', rev: top ? top.flipped : false, taught: false });
+          photos.push({ feat: ft.f, thumb: ft.thumb, big: ft.big, cand: cand, card: top ? top.card : '', rev: top ? top.flipped : false, taught: false });
         }
         next(i + 1);
       }).catch(function () { msg.textContent = '사진을 읽지 못했어요.'; next(i + 1); });
@@ -201,7 +205,55 @@
     var forget = el('button', 'small', '이 덱에 가르쳐 준 것 모두 지우기'); forget.type = 'button';
     forget.addEventListener('click', function () { var db = load(); delete db[deckKey()]; save(db); msg.textContent = '지웠어요.'; });
     bar.appendChild(clr); bar.appendChild(forget); listBox.appendChild(bar);
+    listBox.appendChild(deckGuess());
     result();
+  }
+
+  /* ---------- 무슨 덱인지 추측 (근거 있는 것만) ---------- */
+  function deckGuess() {
+    var box = el('div', 'inline-form');
+    box.appendChild(el('h3', null, '이 사진은 무슨 덱일까요?'));
+    // 1) 이 브라우저에서 전에 가르쳐 준 덱들과 비교
+    var all = load(), scores = [];
+    Object.keys(all).forEach(function (dk) {
+      var best = 0;
+      (all[dk].samples || []).forEach(function (s) { photos.forEach(function (p) { best = Math.max(best, similarity(p.feat, s.f).score); }); });
+      if (best > 0) scores.push([dk, best]);
+    });
+    scores.sort(function (a, b) { return b[1] - a[1]; });
+    if (scores.length) box.appendChild(el('p', 'note', '전에 가르쳐 준 덱과 비교: ' + scores.slice(0, 3).map(function (x) { return x[0] + ' ' + Math.round(x[1] * 100) + '점'; }).join(', ') + '. 70점 이상이면 같은 덱일 가능성이 있어요(확률 아님). 가르쳐 준 적 없는 덱은 여기 나오지 않아요.'));
+    else box.appendChild(el('p', 'note', '아직 가르쳐 준 덱이 없어 이 브라우저 안에서는 비교할 수 없어요.'));
+    // 2) 직접 검색 (사진이 밖으로 나가는 건 이용자가 직접 올릴 때뿐)
+    var lens = el('a', null, '구글 렌즈에서 직접 찾아보기'); lens.href = 'https://lens.google.com/'; lens.target = '_blank'; lens.rel = 'noopener noreferrer';
+    var p2 = el('p', 'note'); p2.appendChild(lens);
+    p2.appendChild(document.createTextNode(' — 열린 페이지에 카드 사진을 직접 올려 덱 이름을 찾아보세요. 여러 검색 결과에서 같은 덱 이름이 나올 때만 근거로 삼고, 찾은 이름은 위 "사용한 덱 이름" 칸에 넣어 주세요. 검색 결과의 그림을 퍼오거나 사이트에 올리지는 마세요(저작권).'));
+    box.appendChild(p2);
+    // 3) 동의한 경우만 자동 검색 (운영자가 켠 경우)
+    if (cfg.deckSearch) {
+      var ok = el('input'); ok.type = 'checkbox';
+      var lab = el('label', 'check'); lab.appendChild(ok); lab.appendChild(el('span', null, ' 이 카드 사진(축소본)을 덱 검색을 위해 Google(미국)로 보내는 데 동의해요. 사이트는 사진을 저장하지 않아요. 얼굴·이름·대화 내용 등 개인정보가 찍힌 사진은 보내지 마세요.'));
+      var btn = el('button', 'small', '덱 자동 검색'); btn.type = 'button';
+      var res = el('div');
+      btn.addEventListener('click', function () {
+        if (!ok.checked) { msg.textContent = '외부 전송에 동의해야 자동 검색을 할 수 있어요.'; return; }
+        var p = photos[0]; if (!p || !p.big) return;
+        btn.disabled = true; res.textContent = '검색 중…';
+        fetch('/api/deck-search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ consent: true, image: p.big.toDataURL('image/jpeg', 0.75) }) })
+          .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+          .then(function (x) {
+            btn.disabled = false; res.textContent = '';
+            if (!x.ok) { res.appendChild(el('p', 'msg err', x.j.message || '검색하지 못했어요.')); return; }
+            var names = (x.j.labels || []).concat((x.j.entities || []).map(function (e) { return e.name; })).filter(function (n, i, a) { return n && a.indexOf(n) === i; }).slice(0, 6);
+            res.appendChild(el('p', 'note', '검색 서비스가 추정한 이름: ' + (names.join(', ') || '없음') + '. 아래 페이지가 근거예요. 같은 이름이 여러 페이지에서 반복될 때만 믿을 만해요. 덱 확정이 아니에요.'));
+            names.forEach(function (n) { var b2 = el('button', 'small', '"' + n + '" 덱 이름 칸에 넣기'); b2.type = 'button'; b2.addEventListener('click', function () { if (deckInput) { deckInput.value = n; deckInput.dispatchEvent(new Event('input', { bubbles: true })); } }); res.appendChild(b2); });
+            var ul = el('ul', 'plain');
+            (x.j.pages || []).forEach(function (pg) { var li = el('li'); var a = el('a', null, pg.title); a.href = pg.url; a.target = '_blank'; a.rel = 'noopener noreferrer nofollow'; li.appendChild(a); ul.appendChild(li); });
+            if ((x.j.pages || []).length) { res.appendChild(el('p', 'note', '같은 그림이 실린 페이지:')); res.appendChild(ul); }
+          }).catch(function () { btn.disabled = false; res.textContent = '인터넷 연결을 확인해 주세요.'; });
+      });
+      box.appendChild(lab); var r2 = el('div', 'btns'); r2.appendChild(btn); box.appendChild(r2); box.appendChild(res);
+    }
+    return box;
   }
 
   function result() {
