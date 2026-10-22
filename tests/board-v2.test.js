@@ -67,3 +67,12 @@ test('anonymous comments publish under a published post', async () => {
   const list = await call(posts, 'GET');
   assert.ok(list.posts.find(p => p.id === top.id).comments.some(x => x.id === c.id));
 });
+
+test('email auth needs age 14+ and consent; deck search is off without a key', async () => {
+  const { default: auth } = await import('../api/auth.js');
+  const { default: deck } = await import('../api/deck-search.js');
+  assert.equal((await call(auth, 'POST', { action: 'send', email: 'a@example.com' })).status, 400);
+  assert.equal((await call(auth, 'POST', { action: 'send', email: 'a@example.com', age14: true })).status, 400);
+  assert.equal((await call(auth, 'POST', { action: 'send', email: 'a@example.com', age14: true, privacy: true })).status, 200);
+  assert.equal((await call(deck, 'POST', { consent: true, image: 'AAAA' })).status, 503);
+});
