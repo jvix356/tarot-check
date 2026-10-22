@@ -42,7 +42,7 @@ export default async function handler(req, res) {
       }
       return send(res, 200, { posts: mine });
     }
-    if(process.env.PUBLIC_COMMUNITY_WRITES!=='1')return send(res,403,{error:'read_only',message:'공개 게시판 신규 글·댓글·제보 접수는 중단했어요. 개선 의견은 판독 결과 아래 비공개 의견으로 남겨 주세요.'});
+    if(process.env.PUBLIC_COMMUNITY_WRITES!=='1' && (b.type!=='report'||process.env.COMMUNITY_PAUSED==='1'))return send(res,403,{error:'read_only',message:'공개 게시판 신규 글·댓글·제보 접수는 중단했어요. 개선 의견은 판독 결과 아래 비공개 의견으로 남겨 주세요.'});
     const type = String(b.type || '');
     if (!TYPES[type]) return send(res, 400, { error: 'type' });
     if (!acc && !OPEN_TYPES.includes(type)) return send(res, 401, { error: 'login_required', message: '제보는 이메일 인증 후에 쓸 수 있어요.' });

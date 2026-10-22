@@ -10,13 +10,19 @@ const HOUR = 36e5;
 
 export default async function handler(req, res) {
   try {
+    const o=req.headers.origin;const allowed=['https://tarot-check.vercel.app','https://maeum-seorap.vercel.app','https://jvix356.github.io'];
+    const local=process.env.STORE==='memory'&&o==='https://test.local';
+    if(o&&!allowed.includes(o)&&!local)return send(res,403,{error:'origin'});
+    if(o){res.setHeader('Access-Control-Allow-Origin',o);res.setHeader('Vary','Origin');}
+    res.setHeader('Access-Control-Allow-Headers','Content-Type,Authorization');res.setHeader('Access-Control-Allow-Methods','GET,POST,OPTIONS');
+    if(req.method==='OPTIONS'){res.statusCode=204;return res.end();}
     if (req.method === 'GET') {
       const acc = await currentAccount(req);
       if (!acc) return send(res, 401, { error: 'login_required' });
-      return send(res, 200, { nickname: acc.nickname || '', email: maskEmail(acc.email), method: acc.method });
+      return send(res, 200, { subject: acc.id, nickname: acc.nickname || '', email: maskEmail(acc.email), method: acc.method });
     }
     if (req.method !== 'POST') return send(res, 405, { error: 'method' });
-    if (!sameOrigin(req)) return send(res, 403, { error: 'origin' });
+    // Explicit community origins validated above; bearer tokens, no ambient cookies.
     const b = await readBody(req);
 
     if (b.action === 'send') {
@@ -26,7 +32,7 @@ export default async function handler(req, res) {
       // 개인정보 보호법 제22조의2: 만 14세 미만은 이메일 인증(개인정보 수집)을 받지 않아요. 수집·이용 동의도 확인해요.
       if (b.age14 !== true) return send(res, 400, { error: 'age', message: '이메일 인증은 만 14세 이상만 할 수 있어요.' });
       if (b.privacy !== true) return send(res, 400, { error: 'privacy', message: '개인정보 수집·이용에 동의해야 인증할 수 있어요.' });
-      if(process.env.PUBLIC_COMMUNITY_WRITES!=='1' && !(await readJSON(`accounts/u${pseudo('email',email).slice(0,20)}.json`)))return send(res,200,{ok:true});
+      if(process.env.COMMUNITY_PAUSED==='1' && !(await readJSON(`accounts/u${pseudo('email',email).slice(0,20)}.json`)))return send(res,403,{error:'paused'});
       const key = `otp/${pseudo('email', email)}.json`;
       const ipKey = `rl/otp-ip-${pseudo('ip', clientIp(req))}.json`;
       const now = Date.now();
@@ -71,7 +77,7 @@ export default async function handler(req, res) {
       const uid = 'u' + pseudo('email', email).slice(0, 20);
       const path = `accounts/${uid}.json`;
       const existing=await readJSON(path);
-      if(!existing && process.env.PUBLIC_COMMUNITY_WRITES!=='1')return send(res,403,{error:'read_only',message:'신규 계정 접수는 중단했어요.'});
+      if(!existing && process.env.COMMUNITY_PAUSED==='1')return send(res,403,{error:'read_only',message:'신규 계정 접수는 중단했어요.'});
       const acc = existing || { id: uid, email, method: 'email', createdAt: new Date().toISOString(), nickname: '', sessionVersion: 1, posts: [] };
       if (acc.disabled) return send(res, 403, { error: 'disabled', message: '이 계정은 운영 정책에 따라 이용이 제한됐어요.' });
       acc.verifiedAt = new Date().toISOString();
