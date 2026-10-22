@@ -1,8 +1,20 @@
 {
-  "updatedAt": null,
-  "n": 0,
-  "outcome": { "normal": 0, "harm": 0, "unknown": 0 },
+  "updatedAt": "2026-10-22",
+  "n": 1,
+  "outcome": {
+    "normal": 1,
+    "harm": 0,
+    "unknown": 0
+  },
   "minAnswers": 20,
+  "learned": 0,
   "signals": [],
-  "history": []
+  "history": [
+    {
+      "day": "2026-10-22",
+      "n": 1,
+      "learned": 0,
+      "changed": 0
+    }
+  ]
 }
