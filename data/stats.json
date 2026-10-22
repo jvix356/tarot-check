@@ -1,0 +1,8 @@
+{
+  "updatedAt": null,
+  "n": 0,
+  "outcome": { "normal": 0, "harm": 0, "unknown": 0 },
+  "minAnswers": 20,
+  "signals": [],
+  "history": []
+}
