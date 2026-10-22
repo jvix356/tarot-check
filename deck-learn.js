@@ -88,7 +88,8 @@
         var slot = el('div', 'slot' + (r.how === 'learned' ? ' guess' : ''));
         slot.appendChild(cardSvg(r.name));
         slot.appendChild(el('p', 'card', r.name));
-        slot.appendChild(el('span', 'pill mid', r.how === 'named' ? '본문에 적힌 카드명' : r.how === 'listed' ? '카드 목록과 일치' : '기억한 표현과 비슷한 후보'));
+        var unv = (r.how === 'learned' && !(prof.cards[r.name] || {}).ok) || (r.how === 'listed' && !(prof.listSrc || {}).ok);
+        slot.appendChild(el('span', 'pill mid', (r.how === 'named' ? '본문에 적힌 카드명' : r.how === 'listed' ? '카드 목록과 일치' : '기억한 표현과 비슷한 후보') + (unv ? ' · 미확인' : '')));
         slot.appendChild(el('p', 'why', r.how === 'learned' ? '겹치는 표현: ' + r.hit.slice(0, 4).join(', ') + '. 이 덱에서 전에 이 카드를 설명할 때 쓰인 표현과 비슷해요. 실제로 뽑은 카드인지는 알 수 없어요.' : '실제 추첨 여부는 확인하지 않았어요.'));
         wrap.appendChild(slot);
       });
@@ -100,15 +101,29 @@
     var known = Object.keys(prof.cards || {}).length, listedN = (prof.listed || []).length;
     sec.appendChild(el('p', 'note', '지금 이 브라우저에 기억한 카드: ' + known + '장 · 카드 목록: ' + listedN + '장'));
     var msg = el('p', 'msg note');
+    // 잘못 가르쳐지지 않도록 저장 전에 근거를 물어봐요
+    var askBox = el('div', 'inline-form');
+    askBox.appendChild(el('p', 'note', '기억시키기 전에 확인해 주세요. 근거 없이 저장한 내용은 "미확인"으로 표시돼요.'));
+    var srcSel = el('select'); srcSel.setAttribute('aria-label', '카드 이름 근거');
+    [['', '카드 이름은 어디서 확인했나요? (필수)'], ['guide', '덱 설명서·카드에 적힌 이름이에요'], ['official', '출판사·제작자 공식 자료예요'], ['reader', '리더가 알려준 이름이에요'], ['guess', '확실하지 않아요']].forEach(function (o) { var op = el('option', null, o[1]); op.value = o[0]; srcSel.appendChild(op); });
+    var refIn = el('input'); refIn.type = 'text'; refIn.maxLength = 120; refIn.placeholder = '자료가 있으면 알려 주세요 (예: 설명서 12쪽, 제작사 홈페이지)';
+    var chk = el('input'); chk.type = 'checkbox';
+    var chkL = el('label', 'check'); chkL.appendChild(chk); chkL.appendChild(el('span', null, ' 카드 이름이 맞는지 다시 확인했어요.'));
+    askBox.appendChild(srcSel); askBox.appendChild(refIn); askBox.appendChild(chkL);
+    function source() {
+      if (!srcSel.value) { msg.textContent = '카드 이름을 어디서 확인했는지 먼저 골라 주세요.'; return null; }
+      return { src: srcSel.value, ref: refIn.value.trim().slice(0, 120), ok: srcSel.value !== 'guess' && chk.checked };
+    }
     var namedNow = segs.map(function (s) { return [namesIn(s)[0], s]; }).filter(function (x) { return x[0]; });
     var learnBtn = el('button', 'small', '이 리딩의 카드 ' + namedNow.length + '장 기억하기');
     learnBtn.type = 'button'; learnBtn.hidden = !namedNow.length;
     learnBtn.addEventListener('click', function () {
+      var so = source(); if (!so) return;
       var d = load(), p = d[dk] || { name: deck, cards: {}, listed: [] };
       namedNow.forEach(function (x) {
         var c = p.cards[x[0]] || { kw: [], seen: 0 };
         c.kw = keywords(x[1]).concat(c.kw).filter(function (k, i, a) { return a.indexOf(k) === i && k !== x[0]; }).slice(0, 30);
-        c.seen++; p.cards[x[0]] = c;
+        c.seen++; c.src = so.src; c.ref = so.ref || c.ref || ''; c.ok = so.ok || !!c.ok; p.cards[x[0]] = c;
       });
       d[dk] = p; msg.textContent = save(d) ? '기억했어요. 리딩 본문은 저장하지 않고, 카드 이름과 주변 표현 몇 개만 이 브라우저에 저장했어요.' : '이 브라우저에서는 저장할 수 없어요.';
       setTimeout(render, 600);
@@ -117,14 +132,16 @@
     list.setAttribute('aria-label', '덱 카드 이름 목록'); list.value = (prof.listed || []).join('\n');
     var listBtn = el('button', 'small', '카드 목록 저장'); listBtn.type = 'button';
     listBtn.addEventListener('click', function () {
+      var so = source(); if (!so) return;
       var d = load(), p = d[dk] || { name: deck, cards: {}, listed: [] };
+      p.listSrc = so;
       p.listed = list.value.split('\n').map(function (s) { return s.trim().slice(0, 30); }).filter(function (s, i, a) { return s.length >= 2 && a.indexOf(s) === i; }).slice(0, 200);
       d[dk] = p; msg.textContent = save(d) ? '카드 목록을 이 브라우저에 저장했어요.' : '이 브라우저에서는 저장할 수 없어요.'; setTimeout(render, 600);
     });
     var clearBtn = el('button', 'small', '이 덱 기억 지우기'); clearBtn.type = 'button';
     clearBtn.addEventListener('click', function () { var d = load(); delete d[dk]; save(d); msg.textContent = '지웠어요.'; setTimeout(render, 400); });
     var row = el('div', 'btns'); row.appendChild(learnBtn); row.appendChild(listBtn); row.appendChild(clearBtn);
-    sec.appendChild(list); sec.appendChild(row); sec.appendChild(msg);
+    sec.appendChild(list); sec.appendChild(askBox); sec.appendChild(row); sec.appendChild(msg);
 
     var anchor = document.getElementById('deckGuide') || (out.querySelector('#card-result-heading') || {}).closest && out.querySelector('#card-result-heading').closest('section');
     if (anchor && anchor.nextSibling) out.insertBefore(sec, anchor.nextSibling); else out.appendChild(sec);
