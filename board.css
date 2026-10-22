@@ -68,6 +68,7 @@ button:disabled{opacity:.5;cursor:default}
 .msg.err{color:var(--ai)} .msg.ok{color:var(--human)}
 .empty{border:1.5px dashed var(--line);border-radius:8px;padding:16px;color:var(--muted)}
 .legal{font-size:13px;background:var(--warn-soft);color:var(--ink);border-radius:6px;padding:10px 12px}
+.legal p{margin:0 0 6px}.legal p:last-child{margin:0}
 details.more{border:1px solid var(--line);border-radius:8px;padding:0 12px;background:var(--bg)}
 details.more>summary{cursor:pointer;padding:10px 0;font-weight:600;font-size:14px}
 details.more>div{padding-bottom:12px;display:flex;flex-direction:column;gap:6px;font-size:14px}

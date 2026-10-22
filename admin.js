@@ -60,7 +60,9 @@
     var a = p.author;
     return el('article', { class: 'post' }, [
       el('div', { class: 'meta' }, [el('span', { class: 'pill type', text: TYPE[p.type] }), el('span', { class: 'pill ' + (p.status === 'published' ? 'ok' : p.status === 'pending' ? 'wait' : 'bad'), text: STATUS[p.status] || p.status }), p.progress ? el('span', { class: 'pill', text: p.progress }) : null, el('b', { text: p.nickname }), el('span', { text: fmt(p.createdAt) })]),
-      el('div', { class: 'ops' }, [a ? ('작성 계정: ' + a.email + ' · 이메일 소유 확인(실명 확인 아님) ' + fmt(a.verifiedAt) + ' · 계정 ID ' + a.id + (a.disabled ? ' · 이용 제한 중' : '')) : '작성 계정 정보 없음']),
+      el('div', { class: 'ops' }, [a ? ('작성 계정: ' + a.email + ' · 이메일 소유 확인(실명 확인 아님) ' + fmt(a.verifiedAt) + ' · 계정 ID ' + a.id + (a.disabled ? ' · 이용 제한 중' : '')) : '닉네임 작성 (이메일 인증 없음)',
+        p.reportCount ? ' · 신고자 ' + p.reportCount + '명' : '', p.hiddenBy === 'reports' ? ' · 신고 누적 자동 숨김' : '',
+        p.block && p.block.blockedUntil ? ' · 작성 제한 중(' + fmt(p.block.blockedUntil) + '까지)' : '']),
       p.flags && p.flags.length ? el('p', { class: 'flags', text: '확인 필요: ' + p.flags.join(', ') }) : null,
       parent ? el('p', { class: 'note', text: '원글: ' + (parent.title || parent.body.slice(0, 40)) }) : null,
       p.title ? el('h3', { text: p.title }) : null,
@@ -72,6 +74,7 @@
         el('button', { class: 'small', text: '정정', onclick: function () { editBox.hidden = !editBox.hidden; } }),
         el('button', { class: 'small danger', text: '삭제', onclick: function () { delConfirm.hidden = false; } }), delConfirm,
         a ? el('button', { class: 'small', text: a.disabled ? '계정 제한 풀기' : '계정 이용 제한', onclick: function () { act({ action: 'disable_account', id: a.id, disabled: !a.disabled }, msg); } }) : null,
+        p.block ? el('button', { class: 'small', text: p.block.blockedUntil ? '작성 제한 풀기' : '작성자 30일 작성 제한', onclick: function () { act({ action: 'block_author', key: p.block.key, blocked: !p.block.blockedUntil }, msg); } }) : null,
       ]),
       p.status === 'pending' ? reason : null,
       editBox,

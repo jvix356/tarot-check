@@ -36,7 +36,11 @@
     $('#authOff').hidden = !!cfg.emailAuth;
     $('#login').hidden = !cfg.emailAuth || !!me;
     $('#nickBox').hidden = !me || !!me.nickname;
-    $('#writer').hidden = !me || !me.nickname;
+    // 후기·피드백·댓글은 로그인 없이 닉네임만으로 쓸 수 있어요
+    $('#writer').hidden = !!(me && !me.nickname);
+    $('#anonRow').hidden = !!me;
+    $('#meRow').hidden = !(me && me.nickname);
+    $('#mineBox').hidden = !(me && me.nickname);
     if (me && me.nickname) { $('#meNick').textContent = me.nickname; $('#meEmail').textContent = '(인증: ' + me.email + ' · 운영자만 볼 수 있음)'; loadMine(); }
     render();
   }
@@ -85,12 +89,14 @@
   $('#wType').addEventListener('change', function () { $('#noteWrap').hidden = this.value !== 'report'; });
   $('#submit').addEventListener('click', function () {
     var b = this; b.disabled = true;
-    api('/api/posts', { method: 'POST', body: { type: $('#wType').value, title: $('#wTitle').value, body: $('#wBody').value, privateNote: $('#wNote').value, agree: $('#wAgree').checked } }).then(function (r) {
+    if ($('#wType').value === 'report' && !me) { b.disabled = false; return say($('#writeMsg'), cfg.emailAuth ? '제보는 위에서 이메일 인증을 한 뒤에 쓸 수 있어요.' : '제보에 필요한 이메일 인증은 준비 중이에요. 후기나 피드백으로 남겨 주세요.'); }
+    api('/api/posts', { method: 'POST', body: { type: $('#wType').value, nickname: me ? undefined : $('#anonNick').value, title: $('#wTitle').value, body: $('#wBody').value, privateNote: $('#wNote').value, agree: $('#wAgree').checked } }).then(function (r) {
       b.disabled = false;
       if (r.__status !== 200) return say($('#writeMsg'), r.message || '제출하지 못했어요.');
       say($('#writeMsg'), r.message, true);
       $('#wTitle').value = ''; $('#wBody').value = ''; $('#wNote').value = ''; $('#wAgree').checked = false;
-      loadMine();
+      if (me) loadMine();
+      if (r.state === 'published') loadList();
     });
   });
   var STATUS = { pending: ['검토 대기', 'wait'], published: ['공개됨', 'ok'], rejected: ['반려', 'bad'], hidden: ['비공개', 'bad'] };
@@ -127,24 +133,25 @@
       api('/api/requests', { method: 'POST', body: { kind: kind, postId: post.id, reason: reason.value, contact: contact.value } }).then(function (r) {
         send.disabled = false;
         say(msg, r.message || (r.__status === 200 ? '접수됐어요.' : '보내지 못했어요.'), r.__status === 200);
-        if (r.__status === 200) { reason.value = ''; contact.value = ''; }
+        if (r.__status === 200) { reason.value = ''; contact.value = ''; if (r.hidden) setTimeout(loadList, 1500); }
       });
     } });
     return el('div', { class: 'inline-form' }, [reason, contact, el('div', { class: 'row' }, [send]), msg]);
   }
 
   function commentForm(post) {
-    var t = el('textarea', { class: 'short', maxlength: '500', 'aria-label': '댓글', placeholder: '댓글은 운영자 확인 뒤 공개돼요.' });
+    var t = el('textarea', { class: 'short', maxlength: '500', 'aria-label': '댓글', placeholder: '댓글은 바로 공개돼요. 특정인을 단정하는 표현이 있으면 운영자 확인 뒤 공개돼요.' });
+    var nick = me ? null : el('input', { type: 'text', maxlength: '12', placeholder: '닉네임 (2~12자)', 'aria-label': '댓글 닉네임' });
     var agree = el('input', { type: 'checkbox' });
     var msg = el('p', { class: 'msg', role: 'status' });
     var b = el('button', { class: 'primary small', text: '댓글 제출', onclick: function () {
       b.disabled = true;
-      api('/api/posts', { method: 'POST', body: { type: 'comment', parentId: post.id, body: t.value, agree: agree.checked } }).then(function (r) {
+      api('/api/posts', { method: 'POST', body: { type: 'comment', parentId: post.id, nickname: nick ? nick.value : undefined, body: t.value, agree: agree.checked } }).then(function (r) {
         b.disabled = false; say(msg, r.message || '제출하지 못했어요.', r.__status === 200);
-        if (r.__status === 200) { t.value = ''; agree.checked = false; loadMine(); }
+        if (r.__status === 200) { t.value = ''; agree.checked = false; if (me) loadMine(); if (r.state === 'published') loadList(); }
       });
     } });
-    return el('div', { class: 'inline-form' }, [t, el('label', { class: 'check' }, [agree, el('span', { text: '사실대로 썼고 개인정보·권리 침해 내용이 없어요.' })]), el('div', { class: 'row' }, [b]), msg]);
+    return el('div', { class: 'inline-form' }, [nick, t, el('label', { class: 'check' }, [agree, el('span', { text: '사실대로 썼고 개인정보·권리 침해 내용이 없어요.' })]), el('div', { class: 'row' }, [b]), msg]);
   }
 
   function render() {
@@ -165,7 +172,7 @@
           return el('p', { class: 'comment' }, [el('span', { class: 'who', text: c.nickname }), c.body, c.reply ? el('span', { class: 'note', text: '  — 운영자: ' + c.reply.body }) : null]);
         })) : null,
         el('div', { class: 'actions' }, [
-          me && me.nickname ? el('button', { class: 'small', text: '댓글 쓰기', onclick: toggle(mkC) }) : null,
+          !me || me.nickname ? el('button', { class: 'small', text: '댓글 쓰기', onclick: toggle(mkC) }) : null,
           el('button', { class: 'small', text: '신고', onclick: toggle(mkR) }),
           el('button', { class: 'small', text: '삭제 요청', onclick: toggle(mkD) }),
           el('button', { class: 'small', text: '정정 요청', onclick: toggle(mkE) }),
