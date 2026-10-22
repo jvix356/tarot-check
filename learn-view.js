@@ -65,7 +65,7 @@ import { correctedSignals } from './teaching-model.js';
     } else {
       p.appendChild(document.createTextNode('익명 통계가 쌓이면 매일 자동으로 학습해 표시 기준이 업데이트돼요. 결과 아래에서 참여할 수 있어요. '));
     }
-    var teachLink = el('a',null,'틀린 안내 가르치기 · 공동 검토 · 기여자 순위'); teachLink.href='/teach.html'; p.appendChild(teachLink); p.appendChild(document.createTextNode(' · '));
+    var teachLink = el('a',null,'기존 교정 참여 정보 관리'); teachLink.href='/teach.html'; p.appendChild(teachLink); p.appendChild(document.createTextNode(' · '));
     var a = el('a', null, '통계 보기'); a.href = '/stats.html'; p.appendChild(a);
     box.appendChild(p);
     var first = out.querySelector('section');

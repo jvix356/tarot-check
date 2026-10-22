@@ -100,6 +100,7 @@
   }
 
   function show(d) {
+    if(d && d.isExample)return;
     last = d || {};
     var old = document.getElementById('statsPanel'); if (old) old.remove();
     out.appendChild(panel(last));

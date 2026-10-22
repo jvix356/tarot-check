@@ -1,3 +1,4 @@
+import { pageWindow } from './board-pagination.js';
 (function () {
   'use strict';
   var $ = function (s, r) { return (r || document).querySelector(s); };
@@ -13,7 +14,8 @@
     try { localStorage.setItem('tc_post_keys', JSON.stringify(ownerKeys)); } catch (e) {}
     loadMine();
   }
-  var me = null, posts = [], filter = 'all';
+  var me = null, posts = [], filter = 'all', page = 1;
+  var openPosts = new Set();
 
   function el(tag, attrs, kids) {
     var n = document.createElement(tag);
@@ -146,10 +148,10 @@
 
   /* ---------- 공개 목록 ---------- */
   function loadList() {
-    api('/api/posts').then(function (r) { posts = r.posts || []; render(); if (r.__status === 0) $('#list').textContent = '글을 불러오지 못했어요.'; });
+    api('/api/posts').then(function (r) { if(r.__status !== 200){$('#list').textContent='글을 불러오지 못했어요. 새로고침해 주세요.';$('#boardCounts').textContent='공개 글 집계 불러오기 실패';return;} posts = (r.posts || []).filter(function(p){return p.type==='review'||p.type==='feedback';}); render(); });
   }
   $$('.tabs button').forEach(function (b) {
-    b.addEventListener('click', function () { filter = b.getAttribute('data-t'); $$('.tabs button').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); }); render(); });
+    b.addEventListener('click', function () { filter = b.getAttribute('data-t'); page=1; $$('.tabs button').forEach(function (x) { x.setAttribute('aria-selected', String(x === b)); }); render(); });
   });
 
   function requestForm(post, kind, label) {
@@ -184,9 +186,14 @@
 
   function render() {
     var box = $('#list'); box.textContent = '';
+    $('#boardCounts').textContent='공개 글 '+posts.length+'건 · 후기 '+posts.filter(function(p){return p.type==='review';}).length+'건 · 피드백 '+posts.filter(function(p){return p.type==='feedback';}).length+'건';
+    $$('.tabs button').forEach(function(b){var t=b.getAttribute('data-t');b.textContent=({all:'전체',review:'후기',feedback:'피드백'})[t]+' '+posts.filter(function(p){return t==='all'||p.type===t;}).length;});
     var list = posts.filter(function (p) { return filter === 'all' || p.type === filter; });
+    var state=pageWindow(list.length,page);page=state.page;
+    $('#listCount').textContent='총 '+list.length+'건 · '+page+' / '+state.totalPages+'페이지 · 한 페이지 5개';
+    pager($('#listPages'),state,function(n){page=n;render();$('#list-h').scrollIntoView({block:'start'});});
     if (!list.length) return box.appendChild(el('div', { class: 'empty', text: '아직 공개된 글이 없어요.' }));
-    list.forEach(function (p) {
+    list.slice(state.start,state.end).forEach(function (p) {
       var slot = el('div');
       var toggle = function (make) { return function () { var open = slot.firstChild && slot.firstChild.__k === make; slot.textContent = ''; if (!open) { var f = make(); f.__k = make; slot.appendChild(f); } }; };
       var mkC = function () { return commentForm(p); }, mkR = function () { return requestForm(p, 'report', '신고'); },
@@ -200,16 +207,35 @@
           return el('p', { class: 'comment' }, [el('span', { class: 'who', text: c.nickname }), c.body, c.reply ? el('span', { class: 'note', text: '  — 운영자: ' + c.reply.body }) : null]);
         })) : null,
         el('div', { class: 'actions' }, [
-          !me || me.nickname ? el('button', { class: 'small', text: '댓글 쓰기', onclick: toggle(mkC) }) : null,
+          null,
           el('button', { class: 'small', text: '신고', onclick: toggle(mkR) }),
           el('button', { class: 'small', text: '삭제 요청', onclick: toggle(mkD) }),
           el('button', { class: 'small', text: '정정 요청', onclick: toggle(mkE) }),
         ]),
         slot,
       ]);
-      box.appendChild(card);
+      var details=el('details',{class:'board-entry'}),summary=el('summary',null,[el('span',{class:'pill type',text:TYPE[p.type]}),el('span',{class:'entry-title',text:p.title}),el('span',{class:'note',text:p.nickname+' · '+fmt(p.createdAt)+' · 댓글 '+(p.comments||[]).length})]);
+      details.append(summary,card);details.open=openPosts.has(p.id);details.addEventListener('toggle',function(){if(details.open)openPosts.add(p.id);else openPosts.delete(p.id);});box.appendChild(details);
     });
   }
+
+  function pager(node,state,change){
+    node.textContent='';
+    if(state.totalPages<=1)return;
+    function button(text,n,current){var b=el('button',{text:text,onclick:function(){change(n);}});if(current){b.setAttribute('aria-current','page');b.setAttribute('aria-label',n+'페이지, 현재 페이지');}else b.setAttribute('aria-label',text.match(/^\d+$/)?n+'페이지':text);node.appendChild(b);}
+    if(state.page>1)button('이전',state.page-1);
+    if(state.groupStart>1)button('이전 5페이지',state.groupStart-1);
+    state.pages.forEach(function(n){button(String(n),n,n===state.page);});
+    if(state.groupEnd<state.totalPages)button('다음 5페이지',state.groupEnd+1);
+    if(state.page<state.totalPages)button('다음',state.page+1);
+  }
+  function notices(){
+    var host=$('#noticeList'),items=$$('article',host).map(function(article){var h=$('h3',article),d=el('details',{class:'board-entry'}),summary=el('summary',{text:h.textContent});h.remove();d.append(summary,article);return d;}),current=1;
+    $('#noticeCount').textContent='('+items.length+'건)';
+    function draw(){var state=pageWindow(items.length,current);current=state.page;host.replaceChildren.apply(host,items.slice(state.start,state.end));pager($('#noticePages'),state,function(n){current=n;draw();$('#notice-h').scrollIntoView({block:'start'});});}draw();
+  }
+  notices();
+  api('/api/stats').then(function(s){$('#boardStats').textContent=s.__status===200?'최근 1년 익명 통계 참여 '+s.n+'건 (최대 30분 지연)':'익명 통계를 불러오지 못했어요.';});
 
   $('#restoreKey').addEventListener('click', function () {
     var item = { id: $('#postId').value.trim(), token: $('#postKey').value.trim() };

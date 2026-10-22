@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+process.env.STORE='memory';delete process.env.PUBLIC_COMMUNITY_WRITES;
+const {default:posts}=await import('../api/posts.js');const {default:teaching}=await import('../api/teaching.js');
+async function call(fn,body){const req={method:body?'POST':'GET',body,query:{},headers:{host:'test.local',origin:'https://test.local'}};const res={setHeader(){},end(s){this.data=JSON.parse(s);}};await fn(req,res);return {status:res.statusCode,...res.data};}
+test('production default closes public submissions and community teaching but preserves ownership lookup',async()=>{for(const type of ['review','feedback','report','comment'])assert.equal((await call(posts,{type,nickname:'점검',title:'기능점검',body:'기능 점검입니다.',agree:true})).status,403);assert.equal((await call(posts,{action:'lookup',keys:[]})).status,200);for(const action of ['register','submit','vote'])assert.equal((await call(teaching,{action})).status,403);const result=await call(teaching);assert.equal(result.closed,true);assert.deepEqual(result.ranking,[]);});

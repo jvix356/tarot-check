@@ -1,3 +1,4 @@
+process.env.PUBLIC_COMMUNITY_WRITES='1';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';

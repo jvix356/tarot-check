@@ -28,10 +28,12 @@ export default async function handler(req,res){
   if(chk.blocked.length||chk.flags.length)return send(res,400,{message:'의견에 개인정보·계정·링크·욕설·단정 표현을 포함하지 마세요. 사용하면서 아쉬웠던 점만 직접 적어 주세요.'});
   const id=hmac('experience:'+b.nonce),path=`experience/${id}.json`;
   if(await readJSON(path))return send(res,200,{ok:true,id,message:'이미 접수된 의견이에요. 참여해 주셔서 고마워요.'});
+  await expired();
+  if((await listPaths('experience/')).length>=200)return send(res,429,{message:'의견 보관함이 차서 접수를 잠시 쉬고 있어요. 판독기는 계속 이용할 수 있어요.'});
   const ratePath=`rl/experience-${pseudo('ip',clientIp(req))}.json`,r=await readJSON(ratePath)||{t:[]};r.t=r.t.filter(t=>Date.now()-t<DAY);
   if(r.t.length>=5)return send(res,429,{message:'오늘 보낼 수 있는 의견 수를 넘었어요. 내일 다시 남겨 주세요.'});
   r.t.push(Date.now());await writeJSON(ratePath,r);
-  await expired();await writeJSON(path,{id,rating:b.rating,comment,createdAt:new Date().toISOString(),status:'new'});
+  await writeJSON(path,{id,rating:b.rating,comment,createdAt:new Date().toISOString(),status:'new'});
   return send(res,200,{ok:true,id,message:'의견 고마워요! 운영자에게만 전달했어요. 나눠 주신 의견은 판독기 개선에 참고할게요.'});
  }catch(e){return send(res,e.status||500,{message:'잠시 후 다시 시도해 주세요.'});}
 }

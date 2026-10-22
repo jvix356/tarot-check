@@ -5,7 +5,7 @@ function el(tag,text){var n=document.createElement(tag);if(text!=null)n.textCont
 function panel(){
  if(!input.value.trim()||document.getElementById('experiencePanel'))return;
  var box=el('section');box.className='panel';box.id='experiencePanel';box.appendChild(el('h3','판독기가 도움이 되었나요?'));
- box.appendChild(el('p','도움이 된 점이나 아쉬운 점을 알려 주세요. 리딩 원문은 자동으로 첨부하지 않으며, 의견은 운영자만 확인해요. 참여하지 않아도 모든 기능을 이용할 수 있어요.'));
+ box.appendChild(el('p','도움이 된 점이나 아쉬운 점을 알려 주세요. 리딩 원문은 자동으로 첨부하지 않으며, 의견은 운영자만 확인해요. 개선 참고용으로 확인하며 개별 답변·반영을 약속하지 않아요. 보관함이 차면 접수를 잠시 쉬어요. 참여하지 않아도 판독할 수 있어요.'));
  var options=el('div');options.className='checks';
  [['helpful','도움이 됐어요'],['mixed','조금 도움이 됐어요'],['unhelpful','아쉬워요']].forEach(function(r){var label=el('label'),radio=el('input');radio.type='radio';radio.name='experienceRating';radio.value=r[0];label.append(radio,document.createTextNode(' '+r[1]));options.appendChild(label);});box.appendChild(options);
  var label=el('label','의견 (선택, 1,000자 이내)');label.className='f';var comment=el('textarea');comment.maxLength=1000;comment.setAttribute('aria-label','개선 의견');comment.placeholder='어느 부분이 도움이 됐거나 아쉬웠나요? 내 경험만 직접 적고, 개인정보·다른 사람의 리딩·사진은 포함하지 마세요.';label.appendChild(comment);box.appendChild(label);

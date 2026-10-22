@@ -82,3 +82,5 @@ footer{border-top:1px solid var(--line);padding-top:14px;font-size:13px;color:va
 #savedKeys { white-space: pre-wrap; overflow-wrap: anywhere; }
 
 .progress-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:12px;margin:18px 0}.progress-metric{padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--paper)}.progress-metric span{display:block;color:var(--muted);font-size:13px}.progress-metric strong{display:block;margin-top:5px;font-size:28px;color:var(--ink)}#improvementProgress progress{width:100%;height:22px;accent-color:var(--accent)}
+
+.board-entry{border-bottom:1px solid var(--line);overflow-wrap:anywhere}.board-entry>summary{cursor:pointer;padding:14px 8px;font-weight:600}.board-entry>summary .pill{margin-right:8px}.board-entry>summary .note{display:block;margin:4px 0 0 20px;font-weight:400}.board-entry[open]>summary{background:var(--accent-soft);border-radius:6px}.board-entry>.post{margin:8px 0 14px}.pagination{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-top:12px}.pagination button[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}

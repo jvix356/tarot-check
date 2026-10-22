@@ -267,7 +267,7 @@ function optionalCardResult(text){
 function render(){
   const text = $("#txt").value.trim(), out = $("#out");
   if (text.length > 20000){out.innerHTML='<div class="empty">리딩은 20,000자 이내로 나눠 입력해 주세요.</div>';return;}
-  if (text.length < 40){ out.innerHTML = '<div class="empty">문체 관찰은 리딩 40자 이상일 때 표시해요. 짧은 글로 작성 방식을 판단할 수는 없어요.</div>'+optionalCardResult(text); return; }
+  if (text.length < 40){window.__tcLast=null; out.innerHTML = '<div class="empty">문체 관찰은 리딩 40자 이상일 때 표시해요. 짧은 글로 작성 방식을 판단할 수는 없어요.</div>'+optionalCardResult(text); return; }
   const st = styleAnalyze(text);
   const {segs, cardSegs} = analyzeSpread(text);
   const [spreadName, spreadDesc] = guessSpreadName(cardSegs);
@@ -357,10 +357,10 @@ function render(){
   h += `<section class="panel"><details class="more" style="background:var(--paper)"><summary>문체 관찰 항목 자세히 보기 (문체 지문 ${st.rows.length}개)</summary><div class="body"><div class="tablewrap"><table class="sig"><tbody>${
     st.rows.length ? [...st.rows].sort((a,b)=>b.pts-a.pts).map(x=>`<tr><td><span style="color:${x.human?'var(--human)':'var(--ai)'};font-weight:600">표현</span> ${esc(x.label)}</td><td class="ex">${esc(x.ex)}</td><td class="n">${esc(x.n)}</td></tr>`).join("") : `<tr><td class="note">걸리는 지문이 없어요.</td></tr>`
   }</tbody></table></div></div></details></section>`;
-  h += `<section class="panel"><h3>후기·피드백·제보</h3><p class="note">판독 결과가 맞았는지, 고쳤으면 하는 점, 겪은 사례를 게시판에 남겨 주세요. 판독기에 붙여넣은 리딩은 자동으로 전송되지 않아요. 게시판에는 직접 써서 제출한 내용만 저장돼요.</p><div class="btns"><a class="navbtn" href="/board.html">게시판으로 가기</a></div></section>`;
+  h += `<section class="panel"><h3>공지·기존 글 보관함</h3><p class="note">공개 글·댓글 신규 접수는 중단했어요. 개선 의견은 결과 아래 비공개 의견으로 남겨 주세요. 리딩 본문은 자동으로 전송하지 않아요.</p><div class="btns"><a class="navbtn" href="/board.html">게시판으로 가기</a></div></section>`;
   out.innerHTML = h;
   // 익명 통계(stats.js)용: 본문이 아니라 관찰 항목 이름·개수만 넘겨요. 보낼지는 이용자가 정해요.
-  try{ const d={signals:st.rows.map(x=>x.label),flags,spread:spreadName,cards:slots.length,len:text.length}; window.__tcLast=d; window.dispatchEvent(new CustomEvent("tc:analysis",{detail:d})); }catch{}
+  try{ const d={isExample:isEx,signals:st.rows.map(x=>x.label),flags,spread:spreadName,cards:slots.length,len:text.length}; window.__tcLast=d; window.dispatchEvent(new CustomEvent("tc:analysis",{detail:d})); }catch{}
 }
 
 document.addEventListener("click", async e=>{
@@ -506,7 +506,8 @@ const EXAMPLE = `🔮 그 사람과 다시 연락이 될까요?
 가까운 시일 내에 빠른 소식이나 연락이 찾아올 가능성이 높습니다. 상황이 빠르게 진행될 거예요.
 
 💫 종합적으로 보면, 재회의 가능성은 열려 있어요. 기억하세요, 최종 선택은 당신에게 달려 있어요. 원하시면 상대방 속마음 리딩도 추가로 봐드릴게요 🌙`;
-const txt = $("#txt"); txt.value = EXAMPLE; let isEx = true;
+const txt = $("#txt"); txt.value = ""; let isEx = false; $("#exNote").hidden=true;
+$("#showExample").onclick=()=>{txt.value=EXAMPLE;isEx=true;$("#exNote").hidden=false;render();};
 const r = debounce(render);
 txt.addEventListener("input",()=>{ if(isEx){ isEx=false; $("#exNote").hidden=true; } r(); });
 ["#myq","#mins","#normal","#knownCards","#deckName"].forEach(s=>$(s).addEventListener("input", r));

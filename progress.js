@@ -43,7 +43,7 @@ function browserEvent(){
 }
 function disabled(){try{return localStorage.getItem('tc_usage_off')==='1';}catch(e){return false;}}
 async function record(){
- if(!dirty || !txt?.value.trim() || inFlight || disabled())return;
+ if(window.__tcLast?.isExample || !dirty || !txt?.value.trim() || inFlight || disabled())return;
  let event=localEvent;try{event=JSON.parse(sessionStorage.getItem('tc_usage_session')||'null')||event;}catch(e){}
  const browser=browserEvent();
  if(event && Date.now()-event.at<30*60e3 && event.sent && (!browser.browser || event.browserSent===browser.browser))return;

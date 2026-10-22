@@ -27,12 +27,13 @@ export default async function handler(req,res) {
     }
     const summary = await teachingSummary();
     if (scope === 'model') return send(res,200,{adjustments:summary.adjustments});
-    return send(res,200,{signals,kinds:KINDS,...summary});
+    return send(res,200,process.env.PUBLIC_COMMUNITY_WRITES==='1'?{signals,kinds:KINDS,...summary}:{signals,kinds:KINDS,proposals:[],ranking:[],closed:true});
   }
   if (req.method !== 'POST') return send(res,405,{error:'method'});
   if (!sameOrigin(req)) return send(res,403,{error:'origin'});
   const b = await readBody(req);
   if (JSON.stringify(b).length > 6000) return send(res,413,{error:'size'});
+  if(process.env.PUBLIC_COMMUNITY_WRITES!=='1' && !['withdraw','privacy'].includes(b.action) && !(b.action==='review' && b.status==='rejected'))return send(res,403,{error:'read_only',message:'공동 교정·투표·순위 운영을 중단했어요. 기존 참여 정보 삭제와 공개 철회는 계속할 수 있어요.'});
   if (b.action === 'register') {
     const nickname = clip(b.nickname,12), bad = checkNickname(nickname);
     if (bad || b.consent !== true) return send(res,400,{message:bad || '닉네임·교정 정보 처리 안내에 동의해 주세요.'});
@@ -58,7 +59,7 @@ export default async function handler(req,res) {
     await writeJSON(path,p);return send(res,200,{ok:true});
   }
   const me = await profile(req); if (!me) return send(res,401,{message:'닉네임으로 참여를 시작하거나 복구키를 입력해 주세요.'});
-  if (b.action==='privacy') { me.listed=b.listed===true;await writeJSON(`teaching/profiles/${me.id}.json`,me);return send(res,200,{ok:true}); }
+  if (b.action==='privacy') { me.listed=process.env.PUBLIC_COMMUNITY_WRITES==='1' && b.listed===true;await writeJSON(`teaching/profiles/${me.id}.json`,me);return send(res,200,{ok:true}); }
   if (b.action==='withdraw') {
     for (const p of await allTeaching()) {
       if (p.authorId===me.id) await remove(`teaching/proposals/${p.id}.json`);

@@ -5,7 +5,7 @@
 <link rel="icon" type="image/svg+xml" href="/assets/tarot-icon.svg?v=1">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>판독기 게시판</title>
-<meta name="description" content="타로 리딩 판독기 이용 후기, 피드백, 제보를 남기는 게시판. 후기·피드백·댓글은 닉네임만으로 바로 공개되고 제보는 운영자 전용으로 비공개 접수돼요.">
+<meta name="description" content="타로 리딩 판독기 이용 후기, 피드백, 제보를 남기는 게시판. 현재는 읽기 전용 보관함이며 신규 글·댓글 접수를 중단했어요.">
 <link rel="stylesheet" href="/fonts/pretendard/pretendard.css?v=1.3.9">
 <link rel="stylesheet" href="board.css">
 <meta property="og:image" content="https://tarot-check.vercel.app/assets/share-card-v2.png">
@@ -26,13 +26,14 @@
   <header class="top">
     <div>
       <h1>판독기 게시판</h1>
-      <p class="sub">후기·피드백·제보를 남겨 주세요. 후기·피드백·댓글은 닉네임만으로 바로 공개되고, 제보는 운영자 전용으로 비공개 접수돼요.</p>
+      <p class="sub">공개 게시판은 읽기 전용으로 보관해요. 새 의견은 판독 결과 아래 비공개 의견으로 남겨 주세요.</p>
     </div>
     <a class="navlink" href="/">← 판독기로 돌아가기</a>
   </header>
 
   <section class="panel" aria-labelledby="notice-h">
-    <h2 id="notice-h">공지사항</h2><article class="post"><h3>2026.10.22 · v2.3 공동 교정·기여자 순위</h3><p>틀린 안내를 직접 만든 예시로 제안하고 다른 이용자와 검토할 수 있어요. 운영자 최종 확인 후 안내에 반영하고, 공개에 동의한 닉네임의 반영 기여 순위를 표시해요. 투표·점수는 정확도 보장이 아니에요.</p><a href="/teach.html">함께 가르치기</a></article>
+    <p class="note">최소 운영 안내: 공개 글·댓글 신규 접수는 중단했어요. 삭제·정정 요청과 내 글 확인은 유지해요. 비공개 의견은 개선 참고용이며 개별 답변·반영을 약속하지 않아요.</p><a href="/">판독기 · 비공개 의견 남기기 →</a><h2 id="notice-h">공지사항 <span id="noticeCount"></span></h2>
+    <div id="noticeList"><article class="post"><h3>2026.10.22 · v2.4 이용 현황·비공개 의견·게시판 목록</h3><p>최근 30일 분석 이용 횟수와 별도 동의한 브라우저 수, 최근 1년 익명 통계 참여 건수를 확인할 수 있어요. 브라우저 수는 실제 사람 수와 다르고, 표본 모집률은 정확도가 아니에요.</p><p>도움 여부와 아쉬운 점은 판독 결과 아래에서 운영자에게만 보낼 수 있어요. 리딩 원문은 자동 첨부하지 않아요. 공개 글·댓글·공동 투표·기여자 순위의 신규 참여는 중단했어요. 기존 글과 공지는 제목을 눌러 읽고, 한 페이지 5개·페이지 번호 5개 묶음으로 이동해요.</p><a href="/stats.html">통계·학습 기록 보기</a></article><article class="post"><h3>2026.10.22 · v2.3 공동 교정·기여자 순위</h3><p>틀린 안내를 직접 만든 예시로 제안하고 다른 이용자와 검토할 수 있어요. 운영자 최종 확인 후 안내에 반영하고, 공개에 동의한 닉네임의 반영 기여 순위를 표시해요. 투표·점수는 정확도 보장이 아니에요.</p><a href="/teach.html">함께 가르치기</a></article>
     <article class="post"><h3>2026.10.22 · 게시판 v2.2 — 제보 비공개 전환</h3><p>이메일 인증 후 작성한 제보는 운영자 전용 제보함에 접수돼요. 기존 제보와 그 댓글도 공개 목록에서 제외했어요. 작성자는 자기 제보의 처리 상태를 확인할 수 있어요.</p></article>
     <article class="post">
       <div class="meta"><span class="pill type">업데이트</span><time datetime="2026-10-22">2026.10.22</time><span>게시판 v2.1</span></div>
@@ -45,11 +46,20 @@
         <li>리딩 분석은 브라우저에서 처리하며 AI 사용 확률이나 사람 작성 여부를 확정하지 않아요. 게시판에는 권리가 있는 내용만 제출해 주세요.</li>
       </ul>
       <p class="note">이의제기는 자동 복원이나 법적 판단을 의미하지 않아요. 기존 비로그인 글에는 확인키가 없어 자동으로 작성자를 확인할 수 없어요.</p>
-    </article>
+    </article></div>
+    <nav id="noticePages" class="pagination" aria-label="공지사항 페이지"></nav>
   </section>
 
-  <section class="panel" aria-labelledby="rules-h">
-    <h2 id="rules-h">이용 안내</h2>
+  <section class="panel" aria-labelledby="board-stats-h">
+    <h2 id="board-stats-h">게시판·참여 현황</h2>
+    <p id="boardCounts" role="status">공개 글 집계 불러오는 중…</p>
+    <p id="boardStats" class="note" role="status">익명 통계 불러오는 중…</p>
+    <a href="/stats.html">참여 통계·학습 기록 자세히 보기 →</a>
+    <p class="note">공개 글 건수만 표시해요. 비공개 제보·사용성 의견·숨김 글은 공개 건수와 목록에서 제외해요. 통계는 참여 건수이며 서로 다른 사람 수가 아니에요.</p>
+  </section>
+
+  <details class="panel" aria-labelledby="rules-h"><summary id="rules-h">기존 글 이용 안내 · 개인정보·저작권 원칙</summary><p class="note">아래 작성 절차는 기존 운영 기록이에요. 현재 신규 공개 글·댓글·제보는 접수하지 않으며 삭제·정정 요청은 유지해요.</p>
+
     <ul class="plain">
       <li><b>후기·피드백·댓글</b>은 이메일 인증 없이 <b>닉네임만으로</b> 쓸 수 있고 바로 공개돼요. 공개 화면에는 닉네임만 보여요.</li>
       <li><b>제보</b>는 이메일 인증 후에 쓸 수 있고, <b>운영자만 볼 수 있는 비공개 제보함</b>에 접수돼요. 이메일 인증은 해당 이메일을 쓸 수 있는지 확인하는 절차일 뿐 <b>실명·신원 확인이나 제보 내용의 사실 확인이 아니에요.</b> 이메일은 운영자만 볼 수 있어요.</li>
@@ -59,17 +69,22 @@
       <li>신고 누적으로 숨겨지거나 운영자가 반려한 글이 반복되면 <b>30일 동안 글을 쓸 수 없어요.</b> 이를 위해 접속 정보(IP)는 원래 값을 알아볼 수 없게 바꾼 값만 저장해요.</li>
       <li>판독기에 붙여넣은 리딩 본문은 서버로 보내지 않아요. 게시판에는 <b>직접 써서 제출한 내용만</b> 저장돼요.</li>
     </ul>
-    <div class="legal">
-      <p><b>법적 책임 안내</b></p>
-      <p>정보통신망을 통해 사실 또는 거짓 사실을 드러내 다른 사람의 명예를 훼손하면 「정보통신망 이용촉진 및 정보보호 등에 관한 법률」 제70조에 따라, 공개적으로 모욕하면 「형법」 제311조에 따라 <b>형사 처벌을 받을 수 있고</b>, 별도로 <b>민사상 손해배상 책임</b>을 질 수 있어요. 사실인 내용이라도 특정인을 알아볼 수 있게 쓰면 명예훼손이 될 수 있어요.</p>
-      <p>다른 사람의 사진·글·카드 그림을 허락 없이 올리면 저작권·초상권 침해가 될 수 있어요.</p>
-      <p>권리 침해 신고가 들어오면 운영자는 같은 법 제44조의2에 따라 해당 글을 <b>최대 30일 동안 임시로 숨길 수 있어요.</b> 수사기관 등이 법령에 따른 절차로 요청하면, 운영자는 보관 중인 범위의 정보를 제공할 수 있어요.</p>
-      <p>공개 글은 특정인을 알아볼 수 없도록 <b>수법·경험 위주로</b> 적어 주세요.</p>
-    </div>
-  </section>
+    <div class="legal"><p>타인의 개인정보·명예·저작권을 침해하는 내용을 공개하지 마세요. 공개된 기존 글에 문제가 있으면 해당 글의 신고·삭제·정정 요청을 이용해 주세요. 자동 필터나 판독 결과는 사실 확인·법적 판단이 아니에요.</p></div>
+  </details>
 
-  <section class="panel" aria-labelledby="write-h">
-    <h2 id="write-h">글쓰기</h2>
+  <section class="panel" aria-labelledby="list-h">
+    <h2 id="list-h">기존 공개 글 보관함</h2>
+    <nav class="tabs" role="tablist" aria-label="글 종류">
+      <button role="tab" data-t="all" aria-selected="true">전체</button>
+      <button role="tab" data-t="review" aria-selected="false">후기</button>
+      <button role="tab" data-t="feedback" aria-selected="false">피드백</button>
+    </nav>
+    <p id="listCount" class="note" role="status"></p>
+    <div id="list"><p class="note">불러오는 중…</p></div>
+    <nav id="listPages" class="pagination" aria-label="공개 글 페이지"></nav>
+  </section>
+  <details class="panel" aria-labelledby="write-h" hidden>
+    <summary id="write-h">글쓰기 · 후기·피드백·비공개 제보</summary>
     <div id="authOff" class="note" hidden>제보에 필요한 이메일 인증은 준비 중이에요. 후기·피드백·댓글은 아래에서 닉네임만으로 바로 쓸 수 있어요.</div>
 
     <div id="login" hidden>
@@ -126,10 +141,10 @@
       <p class="msg" id="writeMsg" role="status"></p>
 
     </div>
-  </section>
+  </details>
 
-  <section class="panel" aria-labelledby="mine-h" id="mineBox">
-    <h2 id="mine-h">내가 쓴 글 · 이의제기</h2>
+  <details class="panel" aria-labelledby="mine-h" id="mineBox">
+    <summary id="mine-h">내가 쓴 글 · 처리 상태·이의제기</summary>
     <p class="note">인증 계정으로 쓴 글과 이 브라우저에 확인키가 남아 있는 최근 비로그인 글·댓글을 보여요. 확인키는 작성 권한을 증명하므로 공유하지 마세요. 브라우저 데이터 삭제 전 별도로 보관해 주세요. 실명 확인 절차가 아니에요.</p>
     <div class="row"><button id="refreshMine">상태 새로고침</button><button id="showKeys">내 글 확인키 보기·접기</button></div>
     <pre id="savedKeys" class="body" hidden></pre>
@@ -140,23 +155,15 @@
     </details>
     <p class="note">이의제기에는 재검토가 필요한 이유만 적어 주세요. 개인정보·타인의 글·사진은 제출하지 마세요. 사유와 답변은 작성자와 운영자만 볼 수 있어요.</p>
     <div id="mine"><p class="note">불러오는 중…</p></div>
-  </section>
+  </details>
 
-  <section class="panel" aria-labelledby="list-h">
-    <h2 id="list-h">공개된 글</h2>
-    <nav class="tabs" role="tablist" aria-label="글 종류">
-      <button role="tab" data-t="all" aria-selected="true">전체</button>
-      <button role="tab" data-t="review" aria-selected="false">후기</button>
-      <button role="tab" data-t="feedback" aria-selected="false">피드백</button>
-    </nav>
-    <div id="list"><p class="note">불러오는 중…</p></div>
-  </section>
+
 
   <footer>
     <p>게시판 글은 작성자 개인의 경험과 의견이며 운영자의 판단이나 사실 확인을 뜻하지 않아요.</p>
     <p>개인정보·권리 침해 신고는 각 글의 "신고" 또는 "삭제 요청" 버튼으로 보내 주세요. <a href="/privacy.html">개인정보 처리방침</a></p>
   </footer>
 </div>
-<script src="board.js"></script>
+<script type="module" src="board.js"></script>
 </body>
 </html>
